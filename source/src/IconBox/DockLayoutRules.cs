@@ -1,0 +1,225 @@
+using System;
+using System.Collections.Generic;
+using System.Linq;
+
+namespace IconBox;
+
+public static class DockLayoutRules
+{
+	public const string Apps = "iconbox://dock/apps";
+
+	public const string Computer = "iconbox://dock/computer";
+
+	public const string ControlCenter = "iconbox://dock/control";
+
+	public const string Power = "iconbox://dock/power";
+
+	public const string Network = "iconbox://dock/network";
+
+	public const string RunningList = "iconbox://dock/running";
+
+	public const string Settings = "iconbox://dock/settings";
+
+	public static readonly string[] SystemKeys = new string[7] { "iconbox://dock/apps", "iconbox://dock/computer", "iconbox://dock/control", "iconbox://dock/power", "iconbox://dock/network", "iconbox://dock/settings", "iconbox://dock/running" };
+
+	// 迁移：旧版（GlassBoard）把 Dock 项写成 glassboard:// 前缀，读数时统一改写为新前缀。
+	private static string Current(string key)
+	{
+		if (key != null && key.StartsWith("glassboard://", StringComparison.OrdinalIgnoreCase))
+		{
+			return "iconbox://" + key.Substring("glassboard://".Length);
+		}
+		return key;
+	}
+
+	public static bool SystemItem(string key)
+	{
+		return SystemKeys.Contains(Current(key), StringComparer.OrdinalIgnoreCase);
+	}
+
+	public static bool Visible(DockOptions o, string key)
+	{
+		// 收纳整合开启时，此电脑/设置/电源/网络一律不显示在 Dock 上
+		key = Current(key);
+		bool folded = o.Consolidate;
+		switch (key)
+		{
+		case "iconbox://dock/network":
+			return !folded && o.ShowNetwork;
+		case "iconbox://dock/power":
+			return !folded && o.ShowPower;
+		case "iconbox://dock/control":
+			return o.ShowControlCenter;
+		case "iconbox://dock/computer":
+			return !folded && o.ShowComputer;
+		case "iconbox://dock/running":
+			return o.ShowRunningList;
+		case "iconbox://dock/settings":
+			return !folded && o.ShowSettings;
+		default:
+			return true;
+		}
+	}
+
+	private static List<string> Merge(IEnumerable<string> saved, List<string> apps)
+	{
+		HashSet<string> allowed = new HashSet<string>(SystemKeys.Concat(apps), StringComparer.OrdinalIgnoreCase);
+		List<string> list = (saved ?? new string[0]).Select(Current).Where((string k) => k != null && allowed.Contains(k)).Distinct(StringComparer.OrdinalIgnoreCase).ToList();
+		if (list.Count == 0)
+		{
+			// 设置图标排在控制中心/运行列表之前，避免 Dock 溢出时被收进"更多"
+			return new string[2] { "iconbox://dock/apps", "iconbox://dock/computer" }.Concat(apps).Concat(new string[5] { "iconbox://dock/power", "iconbox://dock/network", "iconbox://dock/settings", "iconbox://dock/control", "iconbox://dock/running" }).ToList();
+		}
+		string[] systemKeys = SystemKeys;
+		foreach (string text in systemKeys)
+		{
+			if (!list.Contains(text, StringComparer.OrdinalIgnoreCase))
+			{
+				list.Add(text);
+			}
+		}
+		foreach (string app in apps)
+		{
+			if (!list.Contains(app, StringComparer.OrdinalIgnoreCase))
+			{
+				int num2 = list.FindLastIndex((string k) => !SystemItem(k));
+				if (num2 < 0)
+				{
+					num2 = list.IndexOf("iconbox://dock/computer");
+				}
+				list.Insert((num2 < 0) ? list.Count : (num2 + 1), app);
+			}
+		}
+		return list;
+	}
+
+	public static List<string> Common(Preferences p, bool visible = false)
+	{
+		List<string> list = Merge(p.Dock.ItemOrder, (from a in DockOrderRules.Ordered(p)
+			select a.Path).ToList());
+		if (!visible)
+		{
+			return list;
+		}
+		return list.Where((string k) => Visible(p.Dock, k)).ToList();
+	}
+
+	public static List<string> Running(Preferences p, IEnumerable<string> tasks, bool visible = false)
+	{
+		List<string> list = tasks.ToList();
+		IEnumerable<string> enumerable = p.Dock.RunningOrder;
+		if (enumerable == null || !enumerable.Any())
+		{
+			List<string> list2 = new List<string>();
+			int num = 0;
+			foreach (string item in Common(p))
+			{
+				if (SystemItem(item))
+				{
+					list2.Add(item);
+				}
+				else if (num < list.Count)
+				{
+					list2.Add(list[num++]);
+				}
+			}
+			if (num < list.Count)
+			{
+				int num2 = list2.FindLastIndex((string k) => !SystemItem(k));
+				list2.InsertRange((num2 < 0) ? Math.Min(2, list2.Count) : (num2 + 1), list.Skip(num));
+			}
+			enumerable = list2;
+		}
+		List<string> list3 = Merge(enumerable, list);
+		if (!visible)
+		{
+			return list3;
+		}
+		return list3.Where((string k) => Visible(p.Dock, k)).ToList();
+	}
+
+	public static void SyncApps(Preferences p)
+	{
+		if (p.Dock == null)
+		{
+			return;
+		}
+		List<string> list = (from a in DockOrderRules.Ordered(p)
+			select a.Path).ToList();
+		List<string> list2 = Common(p);
+		int num = 0;
+		for (int num2 = 0; num2 < list2.Count; num2++)
+		{
+			if (!SystemItem(list2[num2]))
+			{
+				list2[num2] = list[num++];
+			}
+		}
+		p.Dock.ItemOrder = list2;
+	}
+
+	public static bool Move(Preferences p, string source, string target, bool before, IEnumerable<string> tasks = null)
+	{
+		List<string> list = ((tasks == null) ? Common(p) : Running(p, tasks));
+		int num = list.FindIndex((string k) => string.Equals(k, source, StringComparison.OrdinalIgnoreCase));
+		int num2 = ((target == null) ? list.Count : list.FindIndex((string k) => string.Equals(k, target, StringComparison.OrdinalIgnoreCase)));
+		if (num < 0 || num2 < 0 || string.Equals(source, target, StringComparison.OrdinalIgnoreCase))
+		{
+			return false;
+		}
+		string item = list[num];
+		string[] second = list.ToArray();
+		list.RemoveAt(num);
+		if (num < num2)
+		{
+			num2--;
+		}
+		if (target != null && !before)
+		{
+			num2++;
+		}
+		list.Insert(Math.Max(0, Math.Min(list.Count, num2)), item);
+		if (list.SequenceEqual(second, StringComparer.OrdinalIgnoreCase))
+		{
+			return false;
+		}
+		if (tasks == null)
+		{
+			p.Dock.ItemOrder = list;
+			p.DockOrder = list.Where((string k) => !SystemItem(k)).ToList();
+		}
+		else
+		{
+			p.Dock.RunningOrder = list;
+		}
+		return true;
+	}
+
+	public static bool Step(Preferences p, string source, int step, IEnumerable<string> tasks = null)
+	{
+		List<string> list = ((tasks == null) ? Common(p, visible: true) : Running(p, tasks, visible: true));
+		int num = list.FindIndex((string k) => string.Equals(k, source, StringComparison.OrdinalIgnoreCase));
+		int num2 = num + step;
+		if (num >= 0 && num2 >= 0 && num2 < list.Count && Math.Abs(step) == 1)
+		{
+			return Move(p, source, list[num2], step < 0, tasks);
+		}
+		return false;
+	}
+
+	public static DockDropTarget OnIcon(Preferences p, string source, string target, IEnumerable<string> tasks = null)
+	{
+		List<string> list = ((tasks == null) ? Common(p) : Running(p, tasks));
+		int num = list.FindIndex((string k) => string.Equals(k, source, StringComparison.OrdinalIgnoreCase));
+		int num2 = list.FindIndex((string k) => string.Equals(k, target, StringComparison.OrdinalIgnoreCase));
+		if (num >= 0 && num2 >= 0 && num != num2)
+		{
+			return new DockDropTarget
+			{
+				Path = target,
+				Before = (num > num2)
+			};
+		}
+		return null;
+	}
+}
