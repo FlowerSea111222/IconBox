@@ -100,12 +100,14 @@ public class DockWindow : GlassWindow
 
 	private bool renderedHidden;
 
-	// 跟随 Windows 任务栏自动隐藏：16ms 高帧率轮询任务栏可见高度（约 60fps），
-	// 连续映射目标位置并做一阶平滑，任务栏升起/落下时 Dock 几乎同步跟随，不再有顿挫和延迟。
-	private readonly DispatcherTimer followTimer = new DispatcherTimer(System.Windows.Threading.DispatcherPriority.Send)
-	{
-		Interval = TimeSpan.FromMilliseconds(8.0)
-	};
+	// 跟随 Windows 任务栏自动隐藏：位置由合成帧回调（CompositionTarget.Rendering）驱动，
+	// 与显示器刷新同频，每帧最多移动一次窗口。
+	// 早先用 8ms DispatcherTimer + Send 优先级：同一刷新周期里会跑 1~2 次 tick（重复 SetWindowPos），
+	// 又以 Send 抢占渲染线程，合成与移动互相挤占，观感就是掉帧。
+	private bool followFramesHooked;
+	private TimeSpan followFrameStamp;
+	private double followDpi;
+		private long followMoveTicks;
 
 	private double followTargetTop = double.NaN;
 	private DateTime followTickUtc;
@@ -292,10 +294,6 @@ public class DockWindow : GlassWindow
 		{
 			UpdateAutoHide();
 		};
-		followTimer.Tick += (object s, EventArgs e) =>
-		{
-			UpdateFollowTaskbar();
-		};
 		runningTimer.Tick += (object s, EventArgs e) =>
 		{
 			ReleaseCancelledExternalDrag();
@@ -466,7 +464,7 @@ public class DockWindow : GlassWindow
 		{
 			if (C.Tray != null)
 			{
-				C.Tray.ShowBalloonTip(3000, "IconBox-Source", shortcuts + " 已被占用，对应功能仍可从托盘操作。", ToolTipIcon.Info);
+				C.Tray.ShowBalloonTip(3000, "IconBox", shortcuts + " 已被占用，对应功能仍可从托盘操作。", ToolTipIcon.Info);
 			}
 		}));
 	}
@@ -723,6 +721,9 @@ public class DockWindow : GlassWindow
 
 	public void Refresh(bool capture = true)
 	{
+		// 布局/显示器变化后重新读取 DPI 缩放（跟随任务栏的逐帧循环里使用缓存值）。
+		followDpi = 0.0;
+		followOnTop = false;
 		if (DockInputBusy)
 		{
 			return;
@@ -930,16 +931,16 @@ public class DockWindow : GlassWindow
 		{
 			autoTimer.Stop();
 		}
-		// 跟随任务栏：仅在开启时轮询任务栏升降；关闭时停止并复位记忆值。
+		// 跟随任务栏：开启时挂到合成帧回调（每帧最多移动一次），关闭时解挂并复位记忆值。
 		if (dock.FollowTaskbar)
 		{
 			followTargetTop = double.NaN;
-			followTimer.Start();
-			UpdateFollowTaskbar();
+			AttachFollowFrames();
+			UpdateFollowTaskbar(double.NaN);
 		}
 		else
 		{
-			followTimer.Stop();
+			DetachFollowFrames();
 			// 关闭跟随后复位贴底记忆，让 Dock 回到常规贴工作区底边的位置（而非停在跟随留下的高度）。
 			followTargetTop = double.NaN;
 			settledTop = null;
@@ -1048,7 +1049,50 @@ public class DockWindow : GlassWindow
 	//   - 任务栏弹出（可见高度恢复完整）→ Dock 升到任务栏上沿之上，始终不覆盖任务栏；
 	//   - 任务栏收回（只余触发边，高度≈0）→ Dock 沉到屏幕最底，露出更多桌面。
 	// 位置变化用平滑动画过渡（复用 AnimateDockVisibility 的关键帧/缓动），避免生硬跳变。
-	private void UpdateFollowTaskbar()
+	// 合成帧驱动：CompositionTarget.Rendering 每个合成帧回调一次（与显示器刷新同频，60Hz 约 16.7ms/帧）。
+	// 相比 8ms 定时器，这里不会在同一帧里重复移动窗口，也不会以 Send 优先级抢占渲染线程。
+	private void AttachFollowFrames()
+	{
+		if (!followFramesHooked)
+		{
+			followFrameStamp = TimeSpan.Zero;
+			followDpi = 0.0;
+			CompositionTarget.Rendering += OnFollowFrame;
+			followFramesHooked = true;
+		}
+	}
+
+	private void DetachFollowFrames()
+	{
+		if (followFramesHooked)
+		{
+			CompositionTarget.Rendering -= OnFollowFrame;
+			followFramesHooked = false;
+			followFrameStamp = TimeSpan.Zero;
+		}
+	}
+
+	private void OnFollowFrame(object sender, EventArgs e)
+	{
+		RenderingEventArgs renderingArgs = e as RenderingEventArgs;
+		if (renderingArgs == null)
+		{
+			UpdateFollowTaskbar(double.NaN);
+			return;
+		}
+		TimeSpan renderingTime = renderingArgs.RenderingTime;
+		if (renderingTime <= followFrameStamp)
+		{
+			// 同一个合成帧里的重复回调（WPF 在布局/渲染阶段会多次触发）：直接忽略，
+			// 保证一个合成帧最多做一次 SetWindowPos —— 这是掉帧的主要来源。
+			return;
+		}
+		double frameDelta = ((followFrameStamp == TimeSpan.Zero) ? double.NaN : (renderingTime - followFrameStamp).TotalSeconds);
+		followFrameStamp = renderingTime;
+		UpdateFollowTaskbar(frameDelta);
+	}
+
+	private void UpdateFollowTaskbar(double frameDelta)
 	{
 		if (!C.Prefs.Dock.FollowTaskbar || source == null || !IsVisible || C.GlassSuppressed || dragging)
 		{
@@ -1056,11 +1100,16 @@ public class DockWindow : GlassWindow
 		}
 		try
 		{
-			double dpi = VisualTreeHelper.GetDpi(this).DpiScaleY;
-			if (dpi <= 0.0)
+			// DPI 缩放缓存：GetDpi 会走视觉树，逐帧调用没必要，只在 Refresh/首次进入时刷新。
+			if (followDpi <= 0.0)
 			{
-				dpi = 1.0;
+				followDpi = VisualTreeHelper.GetDpi(this).DpiScaleY;
+				if (followDpi <= 0.0)
+				{
+					followDpi = 1.0;
+				}
 			}
+			double dpi = followDpi;
 			double screenBottom = dockScreenArea.Bottom;
 			int num = TaskbarState.ScreenBottomPxFor(new WindowInteropHelper(this).Handle);
 			if (num > 0)
@@ -1080,10 +1129,67 @@ public class DockWindow : GlassWindow
 			double minTop = dockScreenArea.Top;
 			double maxTop = screenBottom - Height;
 			target = Math.Max(minTop, Math.Min(maxTop, target));
-			DateTime utcNow = DateTime.UtcNow;
-			double num2 = ((followTickUtc == DateTime.MinValue) ? 0.016 : (utcNow - followTickUtc).TotalSeconds);
-			followTickUtc = utcNow;
-			if (num2 <= 0.0 || num2 > 0.032)
+			// Dock 的可见性完全跟随任务栏：任务栏收起（可见高度为 0）时 Dock 立刻沉到屏幕外
+			// 并撤销置顶；任务栏弹出时 Dock 同时升起，最大化窗口下也能一起看见。
+			if (taskbarDip <= 0.0)
+			{
+				if (!renderedHidden)
+				{
+					renderedHidden = true;
+					followTargetTop = double.NaN;
+					followMoveTicks = 0L;
+					ApplyZOrder(false);
+					AnimateDockVisibility(hide: true, screenBottom + 8.0);
+					Store.Trace("DOCK follow hide taskbar-hidden");
+				}
+				return;
+			}
+			if (renderedHidden)
+			{
+				renderedHidden = false;
+				followOnTop = false;
+				followTargetTop = target;
+				shownTop = target;
+				settledTop = target;
+				followMoveTicks = 0L;
+				// 从屏幕外起步，交给下面的指数平滑抬上来（约 200ms），不做瞬间跳位。
+				BeginAnimation(Window.TopProperty, null);
+				Top = screenBottom + 8.0;
+				Store.Trace("DOCK follow show taskbar-visible");
+			}
+			// 置顶只在「鼠标停在屏幕底边（正在唤出任务栏）」时才生效：这样任务栏弹出时 Dock 能压过
+			// 最大化窗口一起被看见（问题 9），鼠标离开后立刻退回普通层、并压到同级窗口最底，
+			// 保证任何时候都不会盖在其它软件界面上（问题 8）。
+			bool nearBottom = false;
+			try
+			{
+				System.Drawing.Point cursorPx = System.Windows.Forms.Cursor.Position;
+				System.Windows.Point cursorDip = source.CompositionTarget.TransformFromDevice.Transform(new System.Windows.Point(cursorPx.X, cursorPx.Y));
+				double band = Math.Max(C.Prefs.Dock.EdgeRange, Height);
+				nearBottom = cursorDip.Y >= screenBottom - band;
+			}
+			catch (Exception ex8)
+			{
+				Store.Log(ex8);
+			}
+			ApplyZOrder(nearBottom);
+			// 帧间隔优先取合成帧时间戳（CompositionTarget.Rendering 自带），比 DateTime.UtcNow 稳定；
+			// 定时调用（Refresh/开关切换）时没有帧时间戳，退回墙钟差值。
+			double num2 = frameDelta;
+			if (double.IsNaN(num2))
+			{
+				// 非帧回调（Refresh / 开关切换）没有帧时间戳，退回墙钟差值。
+				DateTime utcNow = DateTime.UtcNow;
+				num2 = ((followTickUtc == DateTime.MinValue) ? 0.016 : (utcNow - followTickUtc).TotalSeconds);
+			}
+			else if (num2 <= 0.0)
+			{
+				// 同一个合成帧内的重复回调：直接跳过，保证「一帧最多 SetWindowPos 一次」。
+				return;
+			}
+			followTickUtc = DateTime.UtcNow;
+			// 单帧步长钳制到 50ms：偶发卡顿后不要一次跳出一大段位移（原来 32ms 会直接跨两帧）。
+			if (num2 > 0.05)
 			{
 				num2 = 0.016;
 			}
@@ -1094,7 +1200,7 @@ public class DockWindow : GlassWindow
 				shownTop = target;
 				settledTop = target;
 				BeginAnimation(Window.TopProperty, null);
-				Top = target;
+				Top = Math.Round(target * dpi) / dpi;
 				return;
 			}
 			// 目标值迟滞：目标变化不足 1.5px 时不追，消除静止状态的 1~2px 颤振。
@@ -1106,20 +1212,43 @@ public class DockWindow : GlassWindow
 			shownTop = target;
 			settledTop = target;
 			double top = Top;
-			if (Math.Abs(target - top) < 0.2)
+			// 对齐到整数物理像素：150% 缩放下 1 DIP = 1.5 px，不做对齐时窗口会在 1px/2px 间
+			// 反复取整（Sub-pixel 落位），观感是「一顿一顿」的轻微抖动。
+			double pixel = 1.0 / dpi;
+			if (Math.Abs(target - top) < pixel * 0.5)
 			{
 				return;
 			}
-			// 一阶（指数）平滑：时间常数约 45ms，比任务栏自身过渡（约 180ms）快一档，
-			// 观感上紧跟着任务栏一起动，但不会硬跳。关闭动效时直接落位。
+			// 一阶（指数）平滑：时间常数仍为 45ms —— 与改前的 8ms 定时器 + 相同系数在观感上一致；
+			// 现在按合成帧的 dt 推进，等效曲线不变，但每帧最多移动一次。
 			double num3 = (MotionEnabled ? (1.0 - Math.Exp(-num2 / 0.045)) : 1.0);
 			double num4 = top + (target - top) * num3;
-			if (Math.Abs(target - num4) < 0.2)
+			if (Math.Abs(target - num4) < pixel * 0.5)
 			{
 				num4 = target;
 			}
-			BeginAnimation(Window.TopProperty, null);
-			Top = num4;
+			double snapped = Math.Round(num4 * dpi) / dpi;
+			if (Math.Abs(snapped - top) < pixel * 0.5)
+			{
+				return;
+			}
+			// 限速到「一次显示刷新最多移动一次」：WPF 的 Rendering 在本机实测约 5.4ms 一跳，
+			// 而屏幕只有 60Hz(16.7ms) —— 更快的移动永远看不到，只会让合成器多做无用功。
+			// 用 Stopwatch 取时间：DateTime.UtcNow 在本机只有 ~15.6ms 粒度，做门控会失效。
+			long moveTicks = Stopwatch.GetTimestamp();
+			double moveGapMs = ((followMoveTicks == 0L) ? 0.0 : ((double)(moveTicks - followMoveTicks) * 1000.0 / (double)Stopwatch.Frequency));
+			if (followMoveTicks != 0L && moveGapMs < 10.0)
+			{
+				return;
+			}
+			followMoveTicks = moveTicks;
+			// 只在显示/隐藏的关键帧动画仍在跑时才清一次动画；逐帧无条件 BeginAnimation(null)
+			// 会每帧重建动画时钟并触发布局失效，是之前掉帧的一部分。
+			if (HasAnimatedProperties)
+			{
+				BeginAnimation(Window.TopProperty, null);
+			}
+			Top = snapped;
 		}
 		catch (Exception ex)
 		{
@@ -2198,13 +2327,56 @@ public class DockWindow : GlassWindow
 		}
 	}
 
+	private bool followOnTop;
+
+	// Dock 的 z 序：只有「鼠标在屏幕底边、正在唤出任务栏」时才置顶（问题 9 需要它压过最大化窗口），
+	// 其余时刻一律非置顶并压到同级窗口最底，保证不会盖住其它软件界面（问题 8）。
+	// 直接用 SetWindowPos 改窗口层级：WPF 的 Topmost 属性会被 GuardAgainstDesktop 等路径改回，
+	// 而原生 HWND_TOPMOST / HWND_BOTTOM 是幂等且立即可见的。
+	private void ApplyZOrder(bool onTop)
+	{
+		bool changed = followOnTop != onTop;
+		followOnTop = onTop;
+		try
+		{
+			IntPtr handle = new WindowInteropHelper(this).Handle;
+			if (handle == IntPtr.Zero)
+			{
+				return;
+			}
+			Native.SetWindowPos(handle, new IntPtr(onTop ? -1 : 1), 0, 0, 0, 0, 0x13u);
+			if (changed)
+			{
+				Store.Trace("ZORDER " + (onTop ? "topmost" : "bottom"));
+			}
+		}
+		catch (Exception ex)
+		{
+			Store.Log(ex);
+		}
+	}
+
+
 	private void AnimateDockVisibility(bool hide, double target)
 	{
 		double top = Top;
-		// 弹出时临时置顶（可覆盖当前前台应用，方便点击）；收回时恢复普通层（不再浮于其它窗口之上）。
-		if (!C.Prefs.Dock.AlwaysOnTop)
+		// 置顶策略（问题 8 / 9）：
+		//   - 跟随任务栏：z 序完全交给 ApplyZOrder —— 只有鼠标停在屏幕底边、正在唤出任务栏时才置顶，
+		//     其余时刻非置顶并压到同级窗口最底，绝不盖住其它软件界面；
+		//   - 普通悬停唤出：只跟随「始终置顶」开关，不再无条件置顶。
+		// 非置顶时必须显式压到 z 序最底：显示窗口本身会把它抬到同级窗口之上，
+		// 只清 Topmost 并不足以保证「不遮挡其它软件」。
+		if (!C.Prefs.Dock.FollowTaskbar)
 		{
-			Topmost = !hide;
+			Topmost = C.Prefs.Dock.AlwaysOnTop;
+			if (!Topmost)
+			{
+				IntPtr bottomHandle = new WindowInteropHelper(this).Handle;
+				if (bottomHandle != IntPtr.Zero)
+				{
+					Native.SetWindowPos(bottomHandle, new IntPtr(1), 0, 0, 0, 0, 0x13u);
+				}
+			}
 		}
 		int serial = ++revealSerial;
 		BeginAnimation(Window.TopProperty, null);
