@@ -137,7 +137,7 @@ public class Controller
 		};
 		if (!string.IsNullOrEmpty(Store.RecoveryMessage))
 		{
-			System.Windows.MessageBox.Show(Store.RecoveryMessage, "IconBox-Source 配置恢复");
+			System.Windows.MessageBox.Show(Store.RecoveryMessage, "IconBox 配置恢复");
 		}
 		if (Prefs.Removed.Count > 0 || Prefs.RemovedIdentities.Count > 0)
 		{
@@ -186,7 +186,7 @@ public class Controller
 		glassSuppressed = Prefs.GameMode || (Prefs.AutoGameMode && FullscreenState.Active());
 		Tray = new NotifyIcon
 		{
-			Text = "IconBox-Source v1.0.4 · 玻璃启动台",
+			Text = "IconBox v1.0.6 · 玻璃启动台",
 			Icon = (Icon.ExtractAssociatedIcon(Assembly.GetExecutingAssembly().Location) ?? SystemIcons.Application),
 			Visible = true
 		};
@@ -538,7 +538,7 @@ public class Controller
 			WeChatNotifier.TestBadge();
 		});
 		contextMenuStrip2.Items.Add(new ToolStripSeparator());
-		contextMenuStrip2.Items.Add("退出 IconBox-Source", null, (object s, EventArgs e) =>
+		contextMenuStrip2.Items.Add("退出 IconBox", null, (object s, EventArgs e) =>
 		{
 			Quit();
 		});
@@ -552,6 +552,12 @@ public class Controller
 		try
 		{
 			long now = DateTime.UtcNow.ToFileTimeUtc();
+			// 关闭「自动检查更新」时不要在启动阶段发起任何网络请求：
+			// 未签名程序每次启动就连外网，Windows 防火墙/安全软件会反复询问。
+			if (!Prefs.AutoCheckUpdates)
+			{
+				return;
+			}
 			if (now - Prefs.LastUpdateCheckUtc < 864000000000L)
 			{
 				return;
@@ -787,7 +793,7 @@ public class Controller
 				stored = SvgIconConverter.TryConvert(dialog.FileName, 128);
 				if (stored == null)
 				{
-					System.Windows.MessageBox.Show("无法解析该 SVG 文件（仅支持标准矢量路径/矩形/圆形/线条）。\n\n建议使用图标库导出的 PNG 版本。", "IconBox-Source");
+					System.Windows.MessageBox.Show("无法解析该 SVG 文件（仅支持标准矢量路径/矩形/圆形/线条）。\n\n建议使用图标库导出的 PNG 版本。", "IconBox");
 					return;
 				}
 			}
@@ -802,7 +808,7 @@ public class Controller
 		}
 		catch (Exception ex)
 		{
-			System.Windows.MessageBox.Show("无法加载该图片。\n\n" + ex.Message, "IconBox-Source");
+			System.Windows.MessageBox.Show("无法加载该图片。\n\n" + ex.Message, "IconBox");
 		}
 	}
 
@@ -838,7 +844,10 @@ public class Controller
 			{
 				// 冷却保护：启动器类入口（汽水音乐等）主程序窗口与入口路径不同，
 				// 激活判定失败但 12 秒内刚启动过且进程仍在 → 不再重复拉起。
-				if (RunningWindows.RecentlyLaunched(entry.Path) && RunningWindows.ActiveLaunchPids(entry.Path).Count > 0)
+				// 防连点保护：只挡「2.5 秒内的重复点击」，避免把小概率的连击变成两个实例。
+				// 原来沿用 12 秒冷却，导致「进程在后台、窗口没起来」的应用点击后被静默吞掉
+				// （用户看到的就是「图标点了没反应」）。
+				if (RunningWindows.RecentlyLaunched(entry.Path, 2500) && RunningWindows.ActiveLaunchPids(entry.Path).Count > 0)
 				{
 					Store.Trace("LAUNCH cooldown path=" + entry.Path);
 					Board.CollapseSmooth();
@@ -868,7 +877,7 @@ public class Controller
 		{
 			Store.Log(ex);
 			Store.Trace("LAUNCH failed path=" + ((entry == null) ? "" : entry.Path) + " err=" + ex.Message);
-			System.Windows.MessageBox.Show("无法打开「" + entry.Name + "」。\n入口可能已移动或卸载。\n\n" + ex.Message, "IconBox-Source");
+			System.Windows.MessageBox.Show("无法打开「" + entry.Name + "」。\n入口可能已移动或卸载。\n\n" + ex.Message, "IconBox");
 		}
 	}
 
@@ -997,7 +1006,7 @@ public class Controller
 		try
 		{
 			string messageBoxText = "移除已选的 " + num + " 个入口？\n本次从面板与 Dock 移除，原软件和磁盘文件保留。\n移除后可点击「撤销」。";
-			if ((Board.IsVisible ? System.Windows.MessageBox.Show(Board, messageBoxText, "IconBox-Source", MessageBoxButton.YesNo) : System.Windows.MessageBox.Show(messageBoxText, "IconBox-Source", MessageBoxButton.YesNo)) != MessageBoxResult.Yes)
+			if ((Board.IsVisible ? System.Windows.MessageBox.Show(Board, messageBoxText, "IconBox", MessageBoxButton.YesNo) : System.Windows.MessageBox.Show(messageBoxText, "IconBox", MessageBoxButton.YesNo)) != MessageBoxResult.Yes)
 			{
 				return;
 			}
@@ -1033,7 +1042,7 @@ public class Controller
 		try
 		{
 			string messageBoxText = "发现 " + num + " 个重复的软件图标。\n整理后每款软件只保留一个入口；桌面快捷方式、磁盘上的文件与已安装的软件都不会被删除，「文件」分类不受影响。\n整理后可点击「撤销」。";
-			if ((Board.IsVisible ? System.Windows.MessageBox.Show(Board, messageBoxText, "IconBox-Source", MessageBoxButton.YesNo) : System.Windows.MessageBox.Show(messageBoxText, "IconBox-Source", MessageBoxButton.YesNo)) != MessageBoxResult.Yes)
+			if ((Board.IsVisible ? System.Windows.MessageBox.Show(Board, messageBoxText, "IconBox", MessageBoxButton.YesNo) : System.Windows.MessageBox.Show(messageBoxText, "IconBox", MessageBoxButton.YesNo)) != MessageBoxResult.Yes)
 			{
 				return;
 			}
@@ -1058,7 +1067,7 @@ public class Controller
 	{
 		if (!a.Pinned && Prefs.Apps.Count((Entry x) => x.Pinned) >= 20)
 		{
-			System.Windows.MessageBox.Show("最多固定 20 个入口。请先取消一个固定。", "IconBox-Source");
+			System.Windows.MessageBox.Show("最多固定 20 个入口。请先取消一个固定。", "IconBox");
 			return;
 		}
 		BoardEditState before = BeginBoardEdit();
@@ -1313,7 +1322,7 @@ public class Controller
 			}
 			catch (Exception ex)
 			{
-				System.Windows.MessageBox.Show(ex.Message, "IconBox-Source");
+				System.Windows.MessageBox.Show(ex.Message, "IconBox");
 			}
 		});
 		action("文件属性", () =>
@@ -1324,7 +1333,7 @@ public class Controller
 			}
 			catch (Exception ex)
 			{
-				System.Windows.MessageBox.Show(ex.Message, "IconBox-Source");
+				System.Windows.MessageBox.Show(ex.Message, "IconBox");
 			}
 		});
 		action("系统右键菜单（管理员运行等）", () =>
@@ -1449,7 +1458,7 @@ public class Controller
 				}
 				catch (Exception ex)
 				{
-					System.Windows.MessageBox.Show(ex.Message, "IconBox-Source");
+					System.Windows.MessageBox.Show(ex.Message, "IconBox");
 				}
 			});
 			add("文件属性", () =>
@@ -1460,7 +1469,7 @@ public class Controller
 				}
 				catch (Exception ex)
 				{
-					System.Windows.MessageBox.Show(ex.Message, "IconBox-Source");
+					System.Windows.MessageBox.Show(ex.Message, "IconBox");
 				}
 			});
 		}
@@ -1542,7 +1551,7 @@ public class Controller
 		}
 		catch (Exception ex)
 		{
-			System.Windows.MessageBox.Show("无法打开「" + entry.Name + "」。\n入口可能已移动或卸载。\n\n" + ex.Message, "IconBox-Source");
+			System.Windows.MessageBox.Show("无法打开「" + entry.Name + "」。\n入口可能已移动或卸载。\n\n" + ex.Message, "IconBox");
 		}
 	}
 
@@ -1781,7 +1790,7 @@ public class Controller
 			bool settingsLight = Prefs.Light;
 			Window w = new Window
 			{
-				Title = "IconBox-Source · 个性化与控制 v1.0.4",
+				Title = "IconBox · 个性化与控制 v1.0.6",
 				Width = Math.Min(940.0, SystemParameters.WorkArea.Width - 40.0),
 				Height = Math.Min(790.0, SystemParameters.WorkArea.Height - 50.0),
 				MinWidth = 560.0,
@@ -1963,7 +1972,7 @@ public class Controller
 			};
 			refreshPreview();
 			StackPanel stackPanel4 = func("快捷键与开关", "control");
-			StackPanel stackPanel6 = func("通用", "settings");
+			StackPanel stackPanel6 = func("通用", "sliders");
 			StackPanel feedbackPage = func("在线反馈", "note");
 			feedbackPage.Children.Add(new TextBlock
 			{
@@ -2570,7 +2579,7 @@ public class Controller
 			});
 			stackPanel4.Children.Add(new TextBlock
 			{
-				Text = "可点击录制直接按组合键，改完即时生效。右侧开关即时操作。\n隐藏开关：开启彻底隐藏任务栏，关闭显示；自动开关：Windows 任务栏自动隐藏（悬停底部边缘弹出）。\n两者互斥：开启其中一个会自动关闭另一个。注意：彻底隐藏任务栏窗口与 Wallpaper Engine 等动态壁纸可能冲突（表现为背景白屏），如遇白屏请改用自动隐藏。\n修改组合时下方会实时探测冲突（可用/被占用）。快捷键在 IconBox-Source 后台运行时始终有效：关闭面板不影响，托盘「退出」才失效；组合被其他软件占用时会每 5 秒自动重试，对方释放后自动接管。",
+				Text = "可点击录制直接按组合键，改完即时生效。右侧开关即时操作。\n隐藏开关：开启彻底隐藏任务栏，关闭显示；自动开关：Windows 任务栏自动隐藏（悬停底部边缘弹出）。\n两者互斥：开启其中一个会自动关闭另一个。注意：彻底隐藏任务栏窗口与 Wallpaper Engine 等动态壁纸可能冲突（表现为背景白屏），如遇白屏请改用自动隐藏。\n修改组合时下方会实时探测冲突（可用/被占用）。快捷键在 IconBox 后台运行时始终有效：关闭面板不影响，托盘「退出」才失效；组合被其他软件占用时会每 5 秒自动重试，对方释放后自动接管。",
 				Foreground = Tokens.LabelSecondary(settingsLight),
 				TextWrapping = TextWrapping.Wrap,
 				Margin = new Thickness(0.0, 8.0, 0.0, 18.0)
@@ -2927,7 +2936,7 @@ public class Controller
 			}
 			System.Windows.Controls.CheckBox startupCheck = new System.Windows.Controls.CheckBox
 			{
-				Content = "登录 Windows 后自动启动 IconBox-Source",
+				Content = "登录 Windows 后自动启动 IconBox",
 				IsChecked = value2,
 				Foreground = Tokens.Label(settingsLight),
 				Margin = new Thickness(0.0, 10.0, 0.0, 12.0)
@@ -3290,13 +3299,13 @@ public class Controller
 			Board.SetStatus(text);
 			if (Tray != null)
 			{
-				Tray.ShowBalloonTip(1500, "IconBox-Source", text, ToolTipIcon.Info);
+				Tray.ShowBalloonTip(1500, "IconBox", text, ToolTipIcon.Info);
 			}
 		}
 		catch (Exception ex2)
 		{
 			Store.Log(ex2);
-			System.Windows.MessageBox.Show("无法切换系统界面：" + ex2.Message, "IconBox-Source");
+			System.Windows.MessageBox.Show("无法切换系统界面：" + ex2.Message, "IconBox");
 		}
 	}
 
@@ -3317,7 +3326,7 @@ public class Controller
 		catch (Exception ex)
 		{
 			Store.Log(ex);
-			System.Windows.MessageBox.Show("退出前保存失败，软件仍保持运行，避免丢失当前内容。\n" + ex.Message, "IconBox-Source");
+			System.Windows.MessageBox.Show("退出前保存失败，软件仍保持运行，避免丢失当前内容。\n" + ex.Message, "IconBox");
 			return;
 		}
 		ShuttingDown = true;
@@ -3742,7 +3751,7 @@ public class Controller
 			string text = tint.Text.Trim();
 			if (text.Length > 0 && !Regex.IsMatch(text, "^#[a-fA-F0-9]{6}$"))
 			{
-				System.Windows.MessageBox.Show("请输入 #RRGGBB 格式的颜色，例如 #334A70。", "IconBox-Source");
+				System.Windows.MessageBox.Show("请输入 #RRGGBB 格式的颜色，例如 #334A70。", "IconBox");
 			}
 			else
 			{
@@ -4039,8 +4048,8 @@ public class Controller
 		{
 			Microsoft.Win32.SaveFileDialog saveFileDialog = new Microsoft.Win32.SaveFileDialog
 			{
-				FileName = "IconBox-Source_完整备份_" + DateTime.Now.ToString("yyyyMMdd_HHmm") + ".gbbackup",
-				Filter = "IconBox-Source 完整备份|*.gbbackup"
+				FileName = "IconBox_完整备份_" + DateTime.Now.ToString("yyyyMMdd_HHmm") + ".gbbackup",
+				Filter = "IconBox 完整备份|*.gbbackup"
 			};
 			if (saveFileDialog.ShowDialog(OwnerWindow) == true)
 			{
@@ -4072,7 +4081,7 @@ public class Controller
 		{
 			Microsoft.Win32.OpenFileDialog openFileDialog = new Microsoft.Win32.OpenFileDialog
 			{
-				Filter = "IconBox-Source 完整备份|*.gbbackup"
+				Filter = "IconBox 完整备份|*.gbbackup"
 			};
 			if (openFileDialog.ShowDialog(OwnerWindow) != true)
 			{
@@ -4663,7 +4672,7 @@ public class Controller
 				{
 					Microsoft.Win32.SaveFileDialog saveFileDialog = new Microsoft.Win32.SaveFileDialog
 					{
-						FileName = "IconBox-Source_外观方案.json",
+						FileName = "IconBox_外观方案.json",
 						Filter = "外观方案|*.json"
 					};
 					if (saveFileDialog.ShowDialog(w) == true)
@@ -4694,7 +4703,7 @@ public class Controller
 			}));
 			wrapPanel.Children.Add(FeatureUi.Button("删除方案", () =>
 			{
-				if (list.SelectedItem is AppearanceScheme key && System.Windows.MessageBox.Show(w, "删除保存的方案？当前外观保持。", "IconBox-Source", MessageBoxButton.YesNo) == MessageBoxResult.Yes)
+				if (list.SelectedItem is AppearanceScheme key && System.Windows.MessageBox.Show(w, "删除保存的方案？当前外观保持。", "IconBox", MessageBoxButton.YesNo) == MessageBoxResult.Yes)
 				{
 					File.Delete(files[key]);
 					reload();
