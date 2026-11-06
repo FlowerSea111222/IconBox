@@ -183,7 +183,7 @@ public class BoardWindow : GlassWindow
 		: base(42.0)
 	{
 		C = c;
-		Title = "IconBox-Source 应用启动台";
+		Title = "IconBox 应用启动台";
 		AllowDrop = true;
 		Root.PreviewMouseDown += delegate
 		{
@@ -1462,7 +1462,8 @@ public class BoardWindow : GlassWindow
 		}
 		if (string.Equals(id, AppCategoryRules.Tool, StringComparison.OrdinalIgnoreCase))
 		{
-			return "settings";
+			// 「工具」原用齿轮（settings），与设置页「通用」页签图标完全重复且不易辨识，改用工具箱。
+			return "wrench";
 		}
 		if (string.Equals(id, AppCategoryRules.System, StringComparison.OrdinalIgnoreCase))
 		{
@@ -1508,25 +1509,25 @@ public class BoardWindow : GlassWindow
 	private static readonly Thickness CategoryChipBorderThickness = new Thickness(0.0);
 	private SolidColorBrush CategoryChipIdleFill()
 	{
-		// Apple 分段控件的「未选中」：中性灰底，不透明（带一点点透明度让玻璃质感透出来，
-		// 但 88%/76% 已足够实心 —— 实测在 #838D9A 玻璃上能拉开 ~30 个灰阶差）。
+		// 未选中片：冷白（浅色）/ 冷雾白（深色）—— 之前是中性灰 (146,147,155)，
+		// 叠在浅灰玻璃 (218,223,233) 上实测只有 (150,151,160)，整排看起来发灰发脏；
+		// 改为带一点点蓝的冷白，明度拉到玻璃之上，读作「浮起的白色胶囊」而不是灰块。
 		return Tokens.Brush(LightTheme
-			? System.Windows.Media.Color.FromArgb(0xF0, 0x92, 0x93, 0x9B)
-			: System.Windows.Media.Color.FromArgb(0xDC, 0x6C, 0x70, 0x7B));
+			? System.Windows.Media.Color.FromArgb(0xE8, 0xE7, 0xEE, 0xF9)
+			: System.Windows.Media.Color.FromArgb(0x38, 0xE6, 0xEC, 0xF9));
 	}
 
 	private SolidColorBrush CategoryChipHoverFill()
 	{
-		// 悬停只是在未选中底色上再提亮一档（依然是实心中性色，不是半透明）。
+		// 悬停：同一冷白色系再提亮一档（浅色接近纯白，深色抬高雾白不透明度）。
 		return Tokens.Brush(LightTheme
-			? System.Windows.Media.Color.FromArgb(0xFF, 0xA8, 0xA9, 0xB1)
-			: System.Windows.Media.Color.FromArgb(0xEE, 0x7C, 0x80, 0x8C));
+			? System.Windows.Media.Color.FromArgb(0xF7, 0xF3, 0xF7, 0xFE)
+			: System.Windows.Media.Color.FromArgb(0x4E, 0xEC, 0xF1, 0xFC));
 	}
 
 	private SolidColorBrush CategoryChipIdleBorder()
 	{
-		// 不再描边：分段控件的未选中片靠「实心中性底」和玻璃背景的明度差成形，
-		// 在 1 DIP 线宽下任何描边都会被 DWM 玻璃合成摊成过渡色（实测不可辨）。
+		// 不描边：冷白底色本身已经和玻璃拉开明度差，1 DIP 描边会被 DWM 合成摊成过渡色。
 		// 留一个全透明 Brush 保持调用点不变。
 		return Tokens.Brush(System.Windows.Media.Color.FromArgb(0x00, 0x00, 0x00, 0x00));
 	}
