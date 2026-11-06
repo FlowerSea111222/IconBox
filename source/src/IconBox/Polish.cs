@@ -285,20 +285,24 @@ public static class Polish
 
 		// 标签页：分段控件观感（选中项为抬起底色）
 		string tabXaml = "<ControlTemplate xmlns='http://schemas.microsoft.com/winfx/2006/xaml/presentation' TargetType='TabItem'>"
-			+ "<Border x:Name='Chrome' Background='Transparent' CornerRadius='9' Padding='{TemplateBinding Padding}' SnapsToDevicePixels='True'>"
+			+ "<Border x:Name='Chrome' Background='Transparent' CornerRadius='10' Padding='{TemplateBinding Padding}' SnapsToDevicePixels='True'>"
 			+ "<ContentPresenter ContentSource='Header' HorizontalAlignment='Left' VerticalAlignment='Center'/></Border>"
 			+ "<ControlTemplate.Triggers>"
 			+ "<Trigger Property='IsMouseOver' Value='True'><Setter TargetName='Chrome' Property='Background' Value='@FILL'/></Trigger>"
 			+ "<Trigger Property='IsSelected' Value='True'><Setter TargetName='Chrome' Property='Background' Value='@ACCENT'/></Trigger>"
 			+ "<Trigger Property='IsSelected' Value='True'><Setter Property='Foreground' Value='#FFFFFFFF'/></Trigger>"
+			+ "<Trigger Property='IsSelected' Value='True'><Setter TargetName='Chrome' Property='Effect'>"
+			+ "<Setter.Value><DropShadowEffect BlurRadius='16' ShadowDepth='2' Direction='270' Opacity='0.28' Color='#FF0A84FF'/></Setter.Value></Setter></Trigger>"
 			+ "</ControlTemplate.Triggers></ControlTemplate>";
 		Style tab = StyleOf(typeof(TabItem), Template(tabXaml, light), light);
 		tab.Setters.Add(new Setter(Control.ForegroundProperty, Tokens.LabelSecondary(light)));
-		tab.Setters.Add(new Setter(Control.PaddingProperty, new Thickness(14.0, 9.0, 16.0, 9.0)));
-		tab.Setters.Add(new Setter(FrameworkElement.MarginProperty, new Thickness(0.0, 2.0, 0.0, 2.0)));
+		tab.Setters.Add(new Setter(Control.PaddingProperty, new Thickness(13.0, 10.0, 15.0, 10.0)));
+		tab.Setters.Add(new Setter(FrameworkElement.MarginProperty, new Thickness(0.0, 3.0, 0.0, 3.0)));
 		tab.Setters.Add(new Setter(Control.HorizontalContentAlignmentProperty, HorizontalAlignment.Left));
 		tab.Setters.Add(new Setter(Control.FontWeightProperty, Tokens.Type.Medium));
 		tab.Setters.Add(new Setter(FrameworkElement.CursorProperty, Cursors.Hand));
+		// 让选中胶囊铺满左侧导航列（列宽 232 DIP − 左右各 18 DIP 边距 = 196 DIP），避免高亮只包住文字。
+		tab.Setters.Add(new Setter(FrameworkElement.WidthProperty, 196.0));
 		w.Resources[typeof(TabItem)] = tab;
 
 		// TabControl：内容区铺满、无默认边框内衬，配合左侧导航。
