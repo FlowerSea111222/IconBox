@@ -1,11 +1,11 @@
 {
-  "version": "1.0.5",
+  "version": "1.0.6",
   "released": "2026-11-06",
-  "notes": "Dock 跟随任务栏动画改为按合成帧驱动（CompositionTarget.Rendering），一帧最多一次窗口移动、按物理像素对齐、带 10ms 限速，消除掉帧与抖动；大面板底部分类名称背景框由中性灰改为冷白（浅色 E8E7EEF9 / 深色 38E6ECF9）。",
-  "installer": "https://github.com/FlowerSea111222/IconBox/releases/download/v1.0.5/IconBox-Setup-1.0.5.exe",
-  "portable": "https://github.com/FlowerSea111222/IconBox/releases/download/v1.0.5/IconBox_v1.0.5_User.zip",
+  "notes": "修复 9 项问题：启动不再弹「使用推荐配置」；任务栏自动隐藏在窗口创建前即生效（并处理光标压在任务栏上不收起的情况）；Dock 默认压到窗口层级最底、只在鼠标移到底边唤出任务栏时临时置顶；任务栏收起时 Dock 立即移出屏幕、唤出时同步升起；图标自动裁掉四周透明/同色留白；「工具」分类改为工具箱图标、设置「通用」改为滑杆图标；对外名称统一为 IconBox；启动联网检查更新仅在开启「自动检查更新」时进行。",
+  "installer": "https://github.com/FlowerSea111222/IconBox/releases/download/v1.0.6/IconBox-Setup-1.0.6.exe",
+  "portable": "https://github.com/FlowerSea111222/IconBox/releases/download/v1.0.6/IconBox_v1.0.6_User.zip",
   "sha256": {
-    "installer": "B1B65FAFDD438A8B814D3378C0C6171107D66FBFCA0AFA1AF06C5B698C2E068C",
-    "portable": "C1CF0B2D097E808EE0D5F4827F1196019FB0C75FEB7AC1CDDF83CA78B886C483"
+    "installer": "7877D8160FB95DEEFB048315FD3204EA54C9CE24AF37752F4B6198E1D55F4882",
+    "portable": "6B59EA62D5B9130EDA807F9DEFF4DB0F3FA4A96D3D74590D72CE5C92720CD7CD"
   }
 }
