@@ -1,11 +1,11 @@
 {
-  "version": "1.0.3",
+  "version": "1.0.4",
   "released": "2026-11-06",
-  "notes": "修复启动时的权限报错（公共桌面快捷方式不再触发异常）；主程序与安装包加入代码签名；Dock 跟随任务栏的动画改为连续平滑；分类面板默认打开第一个分类，分类标签底色调亮；设置里的修改即时生效，移除了快捷键页多余的保存按钮。",
-  "installer": "https://github.com/FlowerSea111222/IconBox/releases/download/v1.0.3/IconBox-Setup-1.0.3.exe",
-  "portable": "https://github.com/FlowerSea111222/IconBox/releases/download/v1.0.3/IconBox_v1.0.3_User.zip",
+  "notes": "设置面板左侧导航重做：选中高亮铺满整栏（不再只包住文字），图标随选中态反色，圆角与投影更柔和；导航容器左右边距对称。",
+  "installer": "https://github.com/FlowerSea111222/IconBox/releases/download/v1.0.4/IconBox-Setup-1.0.4.exe",
+  "portable": "https://github.com/FlowerSea111222/IconBox/releases/download/v1.0.4/IconBox_v1.0.4_User.zip",
   "sha256": {
-    "installer": "2F8BA8BAECF2AF3FB8B508D618467FD8F904E7C3D5E5A478E3161ECCBA6CC07B",
-    "portable": "58577CF19530C7029C4D50DE47BB39922B4F2856365D4BE2F8C998F51941B64A"
+    "installer": "7E27AF3E94DA26F83695E3727E405C8E1E42717B072384AB70645200B4C627D5",
+    "portable": "1660220922F3C1F4A7A7F077E7A72BC8FD10F383418684FDF7D331FA10E9398E"
   }
 }
