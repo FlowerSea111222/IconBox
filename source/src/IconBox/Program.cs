@@ -74,12 +74,12 @@ public static class Program
 					Store.Log(ex);
 				}
 				DesktopVisibility.ShowAll();
-				MessageBox.Show("已执行任务栏和桌面图标恢复。", "IconBox-Source");
+				MessageBox.Show("已执行任务栏和桌面图标恢复。", "IconBox");
 				return 0;
 			}
 			catch (Exception ex2)
 			{
-				MessageBox.Show(ex2.Message, "IconBox-Source");
+				MessageBox.Show(ex2.Message, "IconBox");
 				return 1;
 			}
 		}
@@ -170,19 +170,20 @@ public static class Program
 			try
 			{
 				Store.Trace("START phase=enter exe=" + Assembly.GetExecutingAssembly().Location + " OS=" + Environment.OSVersion?.ToString() + " CLR=" + Environment.Version);
+				Preferences startupPrefs = null;
 				try
 				{
-					// 崩溃恢复前先读偏好：新会话本就要隐藏任务栏/图标时不做"还原再重隐"，
+					// 崩溃恢复前先读偏好：新会话本就要隐藏任务栏/图标时不做「还原再重隐」，
 					// 避免两次桌面级变更导致 Wallpaper Engine 等动态壁纸瞬间黑屏。
-					Preferences recoveryPrefs = null;
 					try
 					{
-						recoveryPrefs = Store.Load(mergeJournal: false);
+						startupPrefs = Store.Load(mergeJournal: false);
 					}
 					catch
 					{
+						startupPrefs = null;
 					}
-					DesktopVisibility.Recover(keepIconsHidden: recoveryPrefs?.HideDesktopIcons == true, keepTaskbarHidden: recoveryPrefs?.HideTaskbar == true);
+					DesktopVisibility.Recover(keepIconsHidden: startupPrefs?.HideDesktopIcons == true, keepTaskbarHidden: startupPrefs?.HideTaskbar == true);
 					Store.Trace("START phase=recover ms=" + (Environment.TickCount - ProcessStartTick));
 				}
 				catch (Exception ex3)
@@ -198,9 +199,22 @@ public static class Program
 				{
 					Store.Log(ex4);
 				}
-				ConfigImport.TryRun();
-				Store.Trace("START phase=config-import ms=" + (Environment.TickCount - ProcessStartTick));
-				HealthMonitor.Start();
+				// 任务栏自动隐藏尽早生效：在创建窗口之前完成切换，并把当前仍在画面上的
+				// 任务栏直接推到隐藏位，避免「启动后要等一会儿才生效」的观感。
+				try
+				{
+					if (startupPrefs != null && startupPrefs.AutoHideTaskbar && !startupPrefs.HideTaskbar)
+					{
+						DesktopVisibility.SetHidden(taskbar: true, hide: false);
+						TaskbarAutoHide.Set(enabled: true);
+						TaskbarAutoHide.NudgeHidden();
+						Store.Trace("START phase=autohide-early ms=" + (Environment.TickCount - ProcessStartTick));
+					}
+				}
+				catch (Exception exAuto)
+				{
+					Store.Log(exAuto);
+				}
 				Application application = new Application();
 				application.ShutdownMode = ShutdownMode.OnExplicitShutdown;
 				Controller controller = null;
@@ -241,7 +255,7 @@ public static class Program
 							Store.Log(ex6);
 						}
 					}
-					MessageBox.Show("操作失败，详情已记录在配置文件夹 error.log。\n" + e.Exception.Message, "IconBox-Source");
+					MessageBox.Show("操作失败，详情已记录在配置文件夹 error.log。\n" + e.Exception.Message, "IconBox");
 					e.Handled = true;
 				};
 				controller = new Controller();
@@ -254,7 +268,7 @@ public static class Program
 			{
 				HealthMonitor.Report("启动失败", ex5.ToString());
 				Store.Log(ex5);
-				MessageBox.Show("启动失败：" + ex5.Message, "IconBox-Source");
+				MessageBox.Show("启动失败：" + ex5.Message, "IconBox");
 				return 1;
 			}
 		}
