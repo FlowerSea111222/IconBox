@@ -1,0 +1,252 @@
+using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Runtime.InteropServices;
+using System.Windows;
+using System.Windows.Interop;
+using System.Windows.Media;
+using System.Windows.Media.Imaging;
+
+namespace IconBox;
+
+// Explorer 同款缩略图（图片/视频/文档等），复用系统缩略图缓存，速度快且不锁文件
+public static class ShellThumbnail
+{
+	private static readonly Dictionary<string, ImageSource> cache = new Dictionary<string, ImageSource>();
+
+	// 后台图标管线与 UI 线程（媒体悬浮预览）会并发访问缩略图缓存
+	private static readonly object thumbLock = new object();
+
+	[StructLayout(LayoutKind.Sequential)]
+	private struct SIZE
+	{
+		public int cx;
+		public int cy;
+	}
+
+	[Flags]
+	private enum SIIGBF : uint
+	{
+		ResizeToFit = 0x0,
+		BiggerSizeOk = 0x1,
+		MemoryOnly = 0x2,
+		IconOnly = 0x4,
+		ThumbnailOnly = 0x8,
+		InCacheOnly = 0x10
+	}
+
+	[ComImport, InterfaceType(ComInterfaceType.InterfaceIsIUnknown), Guid("bcc18b79-ba16-442f-80c4-8a59c30c463b")]
+	private interface IShellItemImageFactory
+	{
+		[PreserveSig]
+		int GetImage(SIZE size, SIIGBF flags, out IntPtr phbm);
+	}
+
+	[DllImport("shell32.dll", CharSet = CharSet.Unicode, PreserveSig = false)]
+	private static extern void SHCreateItemFromParsingName(string pszPath, IntPtr pbc, ref Guid riid, [MarshalAs(UnmanagedType.Interface)] out IShellItemImageFactory factory);
+
+	[DllImport("gdi32.dll")]
+	private static extern bool DeleteObject(IntPtr hObject);
+
+	private static ImageSource Fetch(string path, int size)
+	{
+		if (path.StartsWith("::", StringComparison.Ordinal))
+		{
+			// SHCreateItemFromParsingName 不接受 "::{GUID}" 命名空间路径（抛 E_INVALIDARG），
+			// 此类图标走 Native.ShellNamespaceIcon 的注册表/固定资源通道。
+			return null;
+		}
+		if (!File.Exists(path))
+		{
+			return null;
+		}
+		Guid iid = new Guid("bcc18b79-ba16-442f-80c4-8a59c30c463b");
+		SHCreateItemFromParsingName(path, IntPtr.Zero, ref iid, out IShellItemImageFactory factory);
+		if (factory == null)
+		{
+			return null;
+		}
+		SIZE sz = new SIZE { cx = size, cy = size };
+		int hr = factory.GetImage(sz, SIIGBF.ThumbnailOnly | SIIGBF.BiggerSizeOk, out IntPtr hbitmap);
+		if (hr < 0 || hbitmap == IntPtr.Zero)
+		{
+			return null;
+		}
+		try
+		{
+			BitmapSource src = Imaging.CreateBitmapSourceFromHBitmap(hbitmap, IntPtr.Zero, Int32Rect.Empty, BitmapSizeOptions.FromEmptyOptions());
+			src.Freeze();
+			return src;
+		}
+		finally
+		{
+			DeleteObject(hbitmap);
+		}
+	}
+
+	public static ImageSource Get(string path, int size)
+	{
+		string key = path.ToLowerInvariant() + "|" + size;
+		lock (thumbLock)
+		{
+			if (cache.TryGetValue(key, out ImageSource hit))
+			{
+				return hit;
+			}
+		}
+		// 永久磁盘缓存：提取一次，后续启动直接加载
+		string cacheName = IconDiskCache.Name(key + "|" + IconDiskCache.FileFingerprint(path));
+		ImageSource diskHit = IconDiskCache.Load(cacheName);
+		if (diskHit != null)
+		{
+			lock (thumbLock)
+			{
+				cache[key] = diskHit;
+			}
+			return diskHit;
+		}
+		ImageSource src = Fetch(path, size);
+		if (src is BitmapSource srcBitmap)
+		{
+			IconDiskCache.Save(cacheName, srcBitmap);
+		}
+		lock (thumbLock)
+		{
+			if (cache.Count > 160)
+			{
+				cache.Clear();
+			}
+			cache[key] = src;
+		}
+		return src;
+	}
+}
+
+// 媒体文件入口：面板磁贴缩略图 + 悬浮预览判定
+public static class MediaThumb
+{
+	private static readonly string[] ImageExt = { ".png", ".jpg", ".jpeg", ".bmp", ".gif", ".webp", ".svg" };
+	private static readonly string[] VideoExt = { ".mp4", ".m4v", ".mov", ".wmv", ".avi", ".mkv", ".webm", ".mpg", ".mpeg", ".flv", ".ts" };
+	private static readonly Dictionary<string, string> svgPng = new Dictionary<string, string>();
+
+	private static readonly object svgLock = new object();
+
+	public static bool IsImage(string path)
+	{
+		string ext = Path.GetExtension(path);
+		foreach (string item in ImageExt)
+		{
+			if (string.Equals(ext, item, StringComparison.OrdinalIgnoreCase))
+			{
+				return true;
+			}
+		}
+		return false;
+	}
+
+	public static bool IsVideo(string path)
+	{
+		string ext = Path.GetExtension(path);
+		foreach (string item in VideoExt)
+		{
+			if (string.Equals(ext, item, StringComparison.OrdinalIgnoreCase))
+			{
+				return true;
+			}
+		}
+		return false;
+	}
+
+	public static bool IsPreviewable(string path)
+	{
+		if (string.IsNullOrWhiteSpace(path) || Directory.Exists(path))
+		{
+			return false;
+		}
+		if (!IsImage(path))
+		{
+			return IsVideo(path);
+		}
+		return true;
+	}
+
+	public static ImageSource LoadFile(string path, int width)
+	{
+		try
+		{
+			BitmapImage img = new BitmapImage();
+			img.BeginInit();
+			img.CacheOption = BitmapCacheOption.OnLoad;
+			img.UriSource = new Uri(path);
+			img.DecodePixelWidth = width;
+			img.EndInit();
+			img.Freeze();
+			return img;
+		}
+		catch
+		{
+			return null;
+		}
+	}
+
+	private static string SvgRaster(string path)
+	{
+		lock (svgLock)
+		{
+			if (svgPng.TryGetValue(path, out string cached) && File.Exists(cached))
+			{
+				return cached;
+			}
+		}
+		string png = SvgIconConverter.TryConvert(path, 256);
+		if (png != null)
+		{
+			lock (svgLock)
+			{
+				svgPng[path] = png;
+			}
+		}
+		return png;
+	}
+
+	// SVG 预览：先光栅化为 PNG 再解码
+	public static ImageSource SvgPreview(string path, int width)
+	{
+		string png = SvgRaster(path);
+		return ((png == null) ? null : LoadFile(png, width));
+	}
+
+	// 磁贴图标：图片/视频直接显示内容缩略图，其余文件沿用原有图标逻辑；
+	// 全部经统一裁切缩放（无底板），视觉大小一致。
+	public static ImageSource TileIcon(Entry entry, bool showShortcutOverlays, bool light)
+	{
+		// 磁贴图标统一落到苹果圆角底板上。底板对「图片/视频缩略图」用透明圆角裁切
+		// （保留内容的自然方形），对其他文件走自动分类（透明 glyph 上中性底板）。
+		string ext = Path.GetExtension(entry.Path);
+		if (string.Equals(ext, ".svg", StringComparison.OrdinalIgnoreCase))
+		{
+			string png = SvgRaster(entry.Path);
+			ImageSource svg = ((png == null) ? null : LoadFile(png, 256));
+			if (svg != null)
+			{
+				return IconNormalizer.NormalizePlate(svg, light, true);
+			}
+		}
+		else if (IsImage(entry.Path) || IsVideo(entry.Path))
+		{
+			ImageSource thumb = ShellThumbnail.Get(entry.Path, 256);
+			if (thumb != null)
+			{
+				return IconNormalizer.NormalizePlate(thumb, light, true);
+			}
+		}
+		// 通用文件图标：先取「原始图标」（未归一化），在原始像素上判定是否为无内容的
+		// 丑图标（如 cmd.exe 黑块）；命中返回 null 交由调用方铺文件类型占位卡片。
+		ImageSource rawIcon = FeatureUi.Icon(entry, showShortcutOverlays, true, normalize: false);
+		if (IconTileDecorator.IsBlankIcon(rawIcon))
+		{
+			return null;
+		}
+		return IconNormalizer.NormalizePlate(rawIcon, light, false);
+	}
+}
