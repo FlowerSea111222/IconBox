@@ -39,7 +39,6 @@ $files = @(
     @{ From = (Join-Path $out 'IconBox.exe.config');             To = $dist },
     @{ From = (Join-Path $out 'Interop.UIAutomationClient.dll');    To = $dist },
     @{ From = (Join-Path $srcRoot 'lib\NPSMLib.dll');               To = (Join-Path $dist 'lib') },
-    @{ From = (Join-Path $srcRoot 'DefaultConfig.json');            To = $dist },
     @{ From = (Join-Path $srcRoot 'README.md');                     To = $dist },
     @{ From = (Join-Path $srcRoot 'THIRD_PARTY_NOTICES.md');        To = $dist }
 )
