@@ -111,7 +111,7 @@ public static class FeatureUi
 		bool dialogLight = Light;
 		Window window = new Window
 		{
-			Title = "IconBox-Source · " + title,
+			Title = "IconBox · " + title,
 			Owner = owner,
 			Width = Math.Min(width, SystemParameters.WorkArea.Width - 40.0),
 			Height = Math.Min(height, SystemParameters.WorkArea.Height - 50.0),
