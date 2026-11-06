@@ -49,7 +49,10 @@ public static class UpdateNotice
 		{
 			Orientation = System.Windows.Controls.Orientation.Horizontal
 		};
-		noticeHeader.Children.Add(Polish.Icon("info", Tokens.LabelSecondary(light), 18.0));
+		FrameworkElement noticeIcon = Polish.Icon("info", Tokens.LabelSecondary(light), 18.0);
+		noticeIcon.Margin = new Thickness(0.0, 0.0, 11.0, 0.0);
+		noticeIcon.VerticalAlignment = VerticalAlignment.Center;
+		noticeHeader.Children.Add(noticeIcon);
 		noticeHeader.Children.Add(new TextBlock
 		{
 			Text = "重要提示",
@@ -59,7 +62,8 @@ public static class UpdateNotice
 		TabItem item = new TabItem
 		{
 			Header = noticeHeader,
-			Content = scroll
+			Content = scroll,
+			Tag = noticeIcon
 		};
 		tabs.Items.Insert(0, item);
 	}
