@@ -1,0 +1,24 @@
+# 构建产物
+source/src/bin/
+source/src/obj/
+source/bin/
+source/obj/
+dist/
+
+# 历史备份与归档（体积大，不入库）
+backup/
+archive/
+
+# 签名私钥与证乧导出（绝不能提交）
+signing/
+*.pfx
+*.p12
+
+# 运行期文件
+*.user
+*.suo
+vs/
+
+# 日志与临时文件
+*.log
+*.tmp
