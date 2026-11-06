@@ -1,11 +1,11 @@
 {
-  "version": "1.0.4",
+  "version": "1.0.5",
   "released": "2026-11-06",
-  "notes": "设置面板左侧导航重做：选中高亮铺满整栏（不再只包住文字），图标随选中态反色，圆角与投影更柔和；导航容器左右边距对称。",
-  "installer": "https://github.com/FlowerSea111222/IconBox/releases/download/v1.0.4/IconBox-Setup-1.0.4.exe",
-  "portable": "https://github.com/FlowerSea111222/IconBox/releases/download/v1.0.4/IconBox_v1.0.4_User.zip",
+  "notes": "Dock 跟随任务栏动画改为按合成帧驱动（CompositionTarget.Rendering），一帧最多一次窗口移动、按物理像素对齐、带 10ms 限速，消除掉帧与抖动；大面板底部分类名称背景框由中性灰改为冷白（浅色 E8E7EEF9 / 深色 38E6ECF9）。",
+  "installer": "https://github.com/FlowerSea111222/IconBox/releases/download/v1.0.5/IconBox-Setup-1.0.5.exe",
+  "portable": "https://github.com/FlowerSea111222/IconBox/releases/download/v1.0.5/IconBox_v1.0.5_User.zip",
   "sha256": {
-    "installer": "7E27AF3E94DA26F83695E3727E405C8E1E42717B072384AB70645200B4C627D5",
-    "portable": "1660220922F3C1F4A7A7F077E7A72BC8FD10F383418684FDF7D331FA10E9398E"
+    "installer": "B1B65FAFDD438A8B814D3378C0C6171107D66FBFCA0AFA1AF06C5B698C2E068C",
+    "portable": "C1CF0B2D097E808EE0D5F4827F1196019FB0C75FEB7AC1CDDF83CA78B886C483"
   }
 }
