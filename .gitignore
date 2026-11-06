@@ -9,7 +9,7 @@ dist/
 backup/
 archive/
 
-# 签名私钥与证乧导出（绝不能提交）
+# 签名私钥与证书导出（绝不能提交）
 signing/
 *.pfx
 *.p12
@@ -17,7 +17,7 @@ signing/
 # 运行期文件
 *.user
 *.suo
-vs/
+.vs/
 
 # 日志与临时文件
 *.log
