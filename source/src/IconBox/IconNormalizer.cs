@@ -200,6 +200,89 @@ namespace IconBox
 			return maxX >= minX && maxY >= minY;
 		}
 
+		// 透明边界 + 中性色空白边扫描。
+		// 部分软件导出的图标把图形画在一块纯白/纯灰的实心方块中间，方块四周留一圈与角点同色的
+		// 空白；这种图 alpha 全不透明，只按透明裁边去不掉，磁贴上就是「图标外圈一圈空白」。
+		// 这里额外把「与角点同色且是中性色（R≈G≈B）」的不透明像素当作可裁掉的空白，
+		// 彩色背景（如整块蓝色方块）不受影响，避免把真实底板裁掉。
+		private static bool ContentBoundsTrimmed(byte[] pixels, int w, int h, out int minX, out int minY, out int maxX, out int maxY)
+		{
+			int stride = w * 4;
+			int[] corners = new int[4]
+			{
+				0,
+				(w - 1) * 4,
+				(h - 1) * stride,
+				(h - 1) * stride + (w - 1) * 4
+			};
+			int cr = -1;
+			int cg = -1;
+			int cb = -1;
+			foreach (int idx in corners)
+			{
+				if (pixels[idx + 3] > 200)
+				{
+					cb = pixels[idx];
+					cg = pixels[idx + 1];
+					cr = pixels[idx + 2];
+					break;
+				}
+			}
+			bool neutral = cr >= 0 && Math.Max(cr, Math.Max(cg, cb)) - Math.Min(cr, Math.Min(cg, cb)) <= 12;
+			if (!ContentBounds(pixels, w, h, out minX, out minY, out maxX, out maxY))
+			{
+				return false;
+			}
+			if (!neutral)
+			{
+				return true;
+			}
+			int alphaW = maxX - minX + 1;
+			int alphaH = maxY - minY + 1;
+			int tMinX = maxX;
+			int tMinY = maxY;
+			int tMaxX = minX;
+			int tMaxY = minY;
+			for (int y = minY; y <= maxY; y++)
+			{
+				int row = y * stride;
+				for (int x = minX; x <= maxX; x++)
+				{
+					int i = row + x * 4;
+					byte alpha = pixels[i + 3];
+					if (alpha <= 16)
+					{
+						continue;
+					}
+					if (alpha > 200 && Math.Abs(pixels[i + 2] - cr) <= 10 && Math.Abs(pixels[i + 1] - cg) <= 10 && Math.Abs(pixels[i] - cb) <= 10)
+					{
+						continue;
+					}
+					if (x < tMinX) { tMinX = x; }
+					if (x > tMaxX) { tMaxX = x; }
+					if (y < tMinY) { tMinY = y; }
+					if (y > tMaxY) { tMaxY = y; }
+				}
+			}
+			// 保护：裁掉的量超过 40% 时不做中性色裁剪——那说明这块中性色底板本身就是图标设计的一部分
+			// （例如白底圆角方块 + 彩色标记），继续裁会把底板裁掉、观感反而变差。
+			if (tMaxX < tMinX || tMaxY < tMinY)
+			{
+				return true;
+			}
+			int trimW = tMaxX - tMinX + 1;
+			int trimH = tMaxY - tMinY + 1;
+			if ((double)trimW < (double)alphaW * 0.6 || (double)trimH < (double)alphaH * 0.6)
+			{
+				return true;
+			}
+			minX = tMinX;
+			minY = tMinY;
+			maxX = tMaxX;
+			maxY = tMaxY;
+			return true;
+		}
+
 		// 统计最外圈 alpha 占用率：> 0.85 视为「全出血方块」（自带背景，透明底即可），
 		// < 0.35 视为「透明的 glyph/自由形状」（需要放到中性底板上升权）。
 		private static double OuterEdgeFillRatio(byte[] pixels, int w, int h)
@@ -233,14 +316,14 @@ namespace IconBox
 				byte[] pixels;
 				int w;
 				int h;
-				ToPbgra(source, out pixels, out w, out h);
+				BitmapSource pbgra = ToPbgra(source, out pixels, out w, out h);
 				int minX, minY, maxX, maxY;
-				if (!ContentBounds(pixels, w, h, out minX, out minY, out maxX, out maxY))
+				if (!ContentBoundsTrimmed(pixels, w, h, out minX, out minY, out maxX, out maxY))
 				{
 					return source;
 				}
 				Int32Rect bounds = new Int32Rect(minX, minY, maxX - minX + 1, maxY - minY + 1);
-				BitmapSource content = new CroppedBitmap((BitmapSource)source, bounds);
+				BitmapSource content = new CroppedBitmap(pbgra, bounds);
 				double scale = Math.Min(CanvasSize * 0.88 / bounds.Width, CanvasSize * 0.88 / bounds.Height);
 				double dw = bounds.Width * scale;
 				double dh = bounds.Height * scale;
@@ -285,7 +368,7 @@ namespace IconBox
 				int h;
 				BitmapSource pbgra = ToPbgra(source, out pixels, out w, out h);
 				int minX, minY, maxX, maxY;
-				bool hasContent = ContentBounds(pixels, w, h, out minX, out minY, out maxX, out maxY);
+				bool hasContent = ContentBoundsTrimmed(pixels, w, h, out minX, out minY, out maxX, out maxY);
 				if (!hasContent)
 				{
 					// 完全空图：画一个中性底板占位，避免再出现「空方块」
