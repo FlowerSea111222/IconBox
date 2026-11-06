@@ -1,0 +1,31 @@
+# Build outputs
+bin/
+obj/
+.vs/
+*.user
+*.suo
+*.cache
+
+# Runtime / installer artifacts (this folder doubles as an installed app dir)
+dist/
+data/*
+!data/AppGroups.tsv
+*.exe
+*.pdb
+*.zip
+*.bak
+*.log
+*.dll
+!src/lib/*.dll
+!lib/*.dll
+*.done
+unins000.*
+SHA256SUMS.txt
+*.cmd
+!src/CheckLag.cmd
+*.bat
+
+# 根目录即便携版：编译好的主程序随仓库分发（拉取即用，无需安装 SDK）
+!GlassBoard.exe
+!GlassBoard.exe.config
+!Interop.UIAutomationClient.dll
