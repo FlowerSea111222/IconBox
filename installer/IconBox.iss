@@ -7,7 +7,7 @@
 ; ============================================================================
 
 #define MyAppName "IconBox"
-#define MyAppVersion "1.0.4"
+#define MyAppVersion "1.0.6"
 #define MyAppPublisher "IconBox"
 #define MyAppURL "https://github.com/FlowerSea111222/IconBox"
 #define MyAppExeName "IconBox.exe"
@@ -104,8 +104,6 @@ Source: "{#PayloadDir}\{#MyAppExeName}";            DestDir: "{app}"; Flags: ign
 Source: "{#PayloadDir}\{#MyAppExeName}.config";     DestDir: "{app}"; Flags: ignoreversion
 Source: "{#PayloadDir}\Interop.UIAutomationClient.dll"; DestDir: "{app}"; Flags: ignoreversion
 Source: "{#PayloadDir}\lib\NPSMLib.dll";            DestDir: "{app}\lib"; Flags: ignoreversion
-; 推荐配置（首次启动会询问是否导入；已导入过则自动跳过）
-Source: "{#PayloadDir}\DefaultConfig.json";         DestDir: "{app}"; Flags: ignoreversion
 ; 文档与第三方许可
 Source: "{#PayloadDir}\README.md";                  DestDir: "{app}"; Flags: ignoreversion
 Source: "{#PayloadDir}\THIRD_PARTY_NOTICES.md";     DestDir: "{app}"; Flags: ignoreversion
@@ -121,8 +119,7 @@ Name: "{autodesktop}\{#MyAppName}";               Filename: "{app}\{#MyAppExeNam
 Filename: "{app}\{#MyAppExeName}"; Description: "{cm:RunAfterInstall}"; WorkingDir: "{app}"; Flags: nowait postinstall skipifsilent
 
 [UninstallDelete]
-; 运行期可能产生的文件（在线更新、自检、配置导入标记）
-Type: files; Name: "{app}\DefaultConfig.json.done"
+; 运行期可能产生的文件（在线更新、自检）
 Type: files; Name: "{app}\self-test-result.txt"
 Type: files; Name: "{app}\IconBox.Updater.exe"
 Type: files; Name: "{app}\error.log"
