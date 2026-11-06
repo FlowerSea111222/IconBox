@@ -134,6 +134,64 @@ public static class TaskbarAutoHide
 		Persist(enabled);
 	}
 
+	private struct POINT
+	{
+		public int X;
+
+		public int Y;
+	}
+
+	[DllImport("user32.dll")]
+	private static extern bool GetCursorPos(out POINT point);
+
+	[DllImport("user32.dll")]
+	private static extern bool SetCursorPos(int x, int y);
+
+	[DllImport("user32.dll")]
+	private static extern bool GetWindowRect(IntPtr window, out RECT rect);
+
+	/// <summary>
+	/// 开启自动隐藏后立刻把仍在画面上的任务栏推回隐藏位。
+	/// 资源管理器只在「鼠标不在任务栏上」时才真正收起它：如果用户是从屏幕底部
+	/// （任务栏/停靠栏）启动的，光标正好压在任务栏上，任务栏会一直保持展开，
+	/// 看起来就是「开了自动隐藏却要等很久才生效」。
+	/// 这里只在光标确实落在任务栏矩形内时，把光标抬高 2 像素离开任务栏，
+	/// 让资源管理器完成收起（2 像素的位移用户不可察觉；绝不还原，否则会立刻再次唤出）。
+	/// 光标不在任务栏上时什么都不做——资源管理器自己会立即收起。
+	/// </summary>
+	public static void NudgeHidden()
+	{
+		try
+		{
+			IntPtr tray = FindWindow("Shell_TrayWnd", null);
+			if (tray == IntPtr.Zero || !GetWindowRect(tray, out RECT bar) || !GetCursorPos(out POINT cursor))
+			{
+				return;
+			}
+			if (bar.Bottom <= bar.Top || bar.Right <= bar.Left)
+			{
+				return;
+			}
+			if (cursor.X < bar.Left || cursor.X > bar.Right || cursor.Y < bar.Top || cursor.Y > bar.Bottom)
+			{
+				return;
+			}
+			int target = Math.Max(0, bar.Top - 2);
+			if (target >= cursor.Y)
+			{
+				return;
+			}
+			if (SetCursorPos(cursor.X, target))
+			{
+				Store.Trace("TASKBAR autohide nudge cursor y=" + cursor.Y + " -> " + target);
+			}
+		}
+		catch (Exception ex)
+		{
+			Store.Log(ex);
+		}
+	}
+
 	// 自动隐藏现在是持久化设置（Prefs.AutoHideTaskbar），状态由 Set() 直接落盘到注册表，
 	// 不再需要"开启前状态"日志。旧实现在退出时把状态回滚成开启前的值，导致用户每次
 	// 关掉程序设置就丢失（开启后退出会被改回关闭，关闭后退出又会被改回开启）。
