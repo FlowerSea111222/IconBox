@@ -94,7 +94,7 @@ public static class BackupFiles
 	{
 		if (!data.ContainsKey("manifest.json") || !data.ContainsKey("layout.json"))
 		{
-			throw new InvalidDataException("不是完整的 IconBox-Source 备份");
+			throw new InvalidDataException("不是完整的 IconBox 备份");
 		}
 		BackupManifest backupManifest = Json<BackupManifest>(data["manifest.json"]);
 		if (backupManifest == null || backupManifest.Version != 1)
@@ -167,7 +167,7 @@ public static class BackupFiles
 		dictionary["manifest.json"] = Encode(new BackupManifest
 		{
 			Version = 1,
-			AppVersion = "1.0.4",
+			AppVersion = "1.0.6",
 			CreatedUtc = DateTime.UtcNow.ToString("o"),
 			Icons = dictionary2
 		});
