@@ -50,7 +50,7 @@ public class BatchAddWindow : Window
 	public BatchAddWindow(Controller controller)
 	{
 		C = controller;
-		Title = "IconBox-Source · 批量添加";
+		Title = "IconBox · 批量添加";
 		Width = Math.Min(800.0, SystemParameters.WorkArea.Width - 40.0);
 		Height = Math.Min(670.0, SystemParameters.WorkArea.Height - 50.0);
 		WindowStartupLocation = WindowStartupLocation.CenterOwner;
