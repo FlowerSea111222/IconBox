@@ -186,7 +186,7 @@ public class Controller
 		glassSuppressed = Prefs.GameMode || (Prefs.AutoGameMode && FullscreenState.Active());
 		Tray = new NotifyIcon
 		{
-			Text = "IconBox-Source v1.0.3 · 玻璃启动台",
+			Text = "IconBox-Source v1.0.4 · 玻璃启动台",
 			Icon = (Icon.ExtractAssociatedIcon(Assembly.GetExecutingAssembly().Location) ?? SystemIcons.Application),
 			Visible = true
 		};
@@ -1781,7 +1781,7 @@ public class Controller
 			bool settingsLight = Prefs.Light;
 			Window w = new Window
 			{
-				Title = "IconBox-Source · 个性化与控制 v1.0.3",
+				Title = "IconBox-Source · 个性化与控制 v1.0.4",
 				Width = Math.Min(940.0, SystemParameters.WorkArea.Width - 40.0),
 				Height = Math.Min(790.0, SystemParameters.WorkArea.Height - 50.0),
 				MinWidth = 560.0,
@@ -1849,7 +1849,7 @@ public class Controller
 				Background = System.Windows.Media.Brushes.Transparent,
 				BorderThickness = new Thickness(0.0),
 				TabStripPlacement = System.Windows.Controls.Dock.Left,
-				Margin = new Thickness(18.0, 10.0, 0.0, 0.0),
+				Margin = new Thickness(18.0, 12.0, 18.0, 0.0),
 				Padding = new Thickness(0.0, 6.0, 0.0, 0.0)
 			};
 			Grid.SetRow(tabs, 1);
@@ -1891,6 +1891,7 @@ public class Controller
 						HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled
 					}
 				};
+				newItem.Tag = navIcon;
 				Grid.SetRow(newItem, 1);
 				Grid.SetColumn(newItem, 0);
 				tabs.Items.Add(newItem);
@@ -2011,8 +2012,39 @@ public class Controller
 			feedbackButtons.Children.Add(feedbackOpen);
 			feedbackButtons.Children.Add(feedbackCopy);
 			feedbackPage.Children.Add(feedbackButtons);
+			// 侧边栏图标随选中态换色：选中为白色，未选中为次要文字色（原先图标恒灰，与白字不协调）。
+			Action paintNavIcons = delegate
+			{
+				foreach (object navItemObject in tabs.Items)
+				{
+					TabItem navItem = navItemObject as TabItem;
+					if (navItem == null)
+					{
+						continue;
+					}
+					FrameworkElement navGlyph = navItem.Tag as FrameworkElement;
+					if (navGlyph == null)
+					{
+						continue;
+					}
+					System.Windows.Media.Brush navInk = navItem.IsSelected ? System.Windows.Media.Brushes.White : Tokens.LabelSecondary(settingsLight);
+					System.Windows.Shapes.Path navPath = navGlyph as System.Windows.Shapes.Path;
+					if (navPath != null)
+					{
+						navPath.Fill = navInk;
+						continue;
+					}
+					TextBlock navText = navGlyph as TextBlock;
+					if (navText != null)
+					{
+						navText.Foreground = navInk;
+					}
+				}
+			};
 			UpdateNotice.Build(tabs);
 			tabs.SelectedIndex = Math.Max(0, Math.Min(6, selectedPage));
+			tabs.SelectionChanged += (object navSender, SelectionChangedEventArgs navArgs) => paintNavIcons();
+			paintNavIcons();
 			DockOptions draft = Prefs.Dock.Copy();
 			bool loading = false;
 			preview.Tick += (object s, EventArgs e) =>
