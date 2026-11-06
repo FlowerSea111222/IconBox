@@ -1,0 +1,48 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <AssemblyName>IconBox</AssemblyName>
+    <GenerateAssemblyInfo>False</GenerateAssemblyInfo>
+    <OutputType>WinExe</OutputType>
+    <UseWPF>True</UseWPF>
+    <UseWindowsForms>True</UseWindowsForms>
+    <TargetFramework>net48</TargetFramework>
+    <LangVersion>14.0</LangVersion>
+    <AllowUnsafeBlocks>True</AllowUnsafeBlocks>
+    <CheckForOverflowUnderflow>False</CheckForOverflowUnderflow>
+    <ApplicationIcon>app.ico</ApplicationIcon>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <RootNamespace />
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Remove="_coretest\**\*.cs" />
+    <EmbeddedResource Remove="_coretest\**" />
+    <None Remove="_coretest\**" />
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NETFramework.ReferenceAssemblies" Version="1.0.3" PrivateAssets="All" />
+    <!-- Windows 10/11 WinRT 元数据：仅编译期引用，运行时由操作系统提供（通知监听） -->
+    <PackageReference Include="Microsoft.Windows.SDK.Contracts" Version="10.0.19041.1" PrivateAssets="All" />
+  </ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="IconBox.MediaBridge.ps1" LogicalName="IconBox.MediaBridge.ps1" />
+    <EmbeddedResource Include="IconBox.NativeMediaBridge.ps1" LogicalName="IconBox.NativeMediaBridge.ps1" />
+    <EmbeddedResource Include="IconBox\ControlCenter.ps1" LogicalName="IconBox.ControlCenter.ps1" />
+    <EmbeddedResource Include="IconBox\Assets\launchpad.png" LogicalName="IconBox.Assets.launchpad.png" />
+    <EmbeddedResource Include="IconBox\Assets\control.png" LogicalName="IconBox.Assets.control.png" />
+    <EmbeddedResource Include="IconBox\Assets\tray.png" LogicalName="IconBox.Assets.tray.png" />
+    <EmbeddedResource Include="IconBox\Assets\settings.svg" LogicalName="IconBox.Assets.settings.svg" />
+    <EmbeddedResource Include="IconBox\Assets\running.png" LogicalName="IconBox.Assets.running.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Reference Include="Interop.UIAutomationClient">
+      <HintPath>lib\Interop.UIAutomationClient.dll</HintPath>
+    </Reference>
+    <Reference Include="Microsoft.VisualBasic" />
+    <Reference Include="System.Core" />
+    <Reference Include="System.Management" />
+    <Reference Include="System.Runtime.Serialization" />
+    <Reference Include="System.IO.Compression" />
+    <Reference Include="System.IO.Compression.FileSystem" />
+    <Reference Include="System.Net.Http" />
+  </ItemGroup>
+</Project>
