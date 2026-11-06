@@ -1707,7 +1707,9 @@ public static class RunningWindows
 	}
 
 	// 最近一次从该入口启动是否发生在冷却期内（避免 launcher 应用被反复拉起）。
-	public static bool RecentlyLaunched(string path)
+	// maxMilliseconds 默认 12 秒；点击图标的防连点只需要 2–3 秒的窗口，
+	// 太长会把「进程还在后台、但窗口没起来」的应用误判成「刚启动过」，点击后什么都不发生。
+	public static bool RecentlyLaunched(string path, int maxMilliseconds = 12000)
 	{
 		if (string.IsNullOrEmpty(path) || !launched.TryGetValue(path, out var list) || list.Count == 0)
 		{
@@ -1716,7 +1718,7 @@ public static class RunningWindows
 		int tick = Environment.TickCount;
 		LaunchInfo launchInfo = list[list.Count - 1];
 		int num = tick - launchInfo.Tick;
-		return num >= 0 && num < 12000;
+		return num >= 0 && num < maxMilliseconds;
 	}
 
 	public static void NoteLaunch(string path, int pid, string processName)
