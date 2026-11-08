@@ -1,11 +1,11 @@
 {
-  "version": "1.0.9",
+  "version": "1.0.10",
   "released": "2026-11-08",
-  "notes": "修复 Win+D（显示桌面）后的 Dock 异常：旧的「显示桌面守护」会把 Dock 抬成 HWND_TOPMOST，与跟随状态机的 HWND_BOTTOM 每帧互相打回，表现为闪烁、层序错乱并一度浮在窗口之上。跟随任务栏时该守护现在自动退场，层序只由 ApplyZOrder 维护（桌面常驻、置底不遮挡、底边唤出时才置顶全部保持）。",
-  "installer": "https://github.com/FlowerSea111222/IconBox/releases/download/v1.0.9/IconBox-Setup-1.0.9.exe",
-  "portable": "https://github.com/FlowerSea111222/IconBox/releases/download/v1.0.9/IconBox_v1.0.9_User.zip",
+  "notes": "修复 z 序控制权冲突：「始终置顶」在跟随任务栏模式下被每帧压到最底而失效、层序来回翻转导致闪烁；设置里 Dock 预览固定也被跟随状态机覆盖。现在层级只在变化时写一次，且置顶条件统一为「鼠标在底边 / 始终置顶 / 设置预览中」。",
+  "installer": "https://github.com/FlowerSea111222/IconBox/releases/download/v1.0.10/IconBox-Setup-1.0.10.exe",
+  "portable": "https://github.com/FlowerSea111222/IconBox/releases/download/v1.0.10/IconBox_v1.0.10_User.zip",
   "sha256": {
-    "installer": "DFA509A438ABA08043DDF70576583519FC80C083569591FF433AFDADCE446DF9",
-    "portable": "1F077E363B4CBD5A31867060B9CAB402CBEAD3C2A78BCC25C090F74603355F6B"
+    "installer": "2285DD623C35C13FA7ED9AF516AC64C1DE4A8D1CBD8EA289ECE3F1EF40F0DEF6",
+    "portable": "7D670B04D9B0656ED35A8A2EE0874851E5DFDEDD732C431746A13DC6DBDF7205"
   }
 }
