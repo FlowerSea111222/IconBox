@@ -874,7 +874,7 @@ public class ControlCenterWindow : GlassWindow
 		ShowPanel();
 	}
 
-	private void ClosePanel()
+	public void ClosePanel()
 	{
 		if (closing || !IsVisible)
 		{
