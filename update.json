@@ -1,11 +1,11 @@
 {
-  "version": "1.0.11",
+  "version": "1.0.12",
   "released": "2026-11-08",
-  "notes": "删除工作区功能（一组入口的一次性启动集合）。托盘菜单、面板菜单、设置页与工作区对话框一并移除，界面上不再出现工作区入口。",
-  "installer": "https://github.com/FlowerSea111222/IconBox/releases/download/v1.0.11/IconBox-Setup-1.0.11.exe",
-  "portable": "https://github.com/FlowerSea111222/IconBox/releases/download/v1.0.11/IconBox_v1.0.11_User.zip",
+  "notes": "控制中心（控制面板）的外观默认跟随 Dock DIY：圆角与卡片浓度由 Dock 的圆角、透明度换算，不再有独立的一套固定数值。",
+  "installer": "https://github.com/FlowerSea111222/IconBox/releases/download/v1.0.12/IconBox-Setup-1.0.12.exe",
+  "portable": "https://github.com/FlowerSea111222/IconBox/releases/download/v1.0.12/IconBox_v1.0.12_User.zip",
   "sha256": {
-    "installer": "DC5B70CDD4DA5D5D9CECC98DC3E3B30A03066B7A07D95BF78FA88E2DF925E921",
-    "portable": "FF3D0733269E1FB7B7ADA4A05CA4A32602DE8476D9A60963CDBAAC0DF5F22962"
+    "installer": "B682B7637ACB9759B3F6AFE8395C30386E2151408561DD817EF5C69707E1C487",
+    "portable": "B2B09C1579302774DB2925DAFF822C972C2224372CD78E2F5FB13196EE38F9D4"
   }
 }
