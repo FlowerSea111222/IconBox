@@ -1,11 +1,11 @@
 {
-  "version": "1.0.8",
+  "version": "1.0.9",
   "released": "2026-11-08",
-  "notes": "Dock 唤出加入自愈：跟随状态机如果因为「拖动标志未复位」「窗口被系统隐藏」「合成帧回调停摆」而卡死，会在鼠标移到底部时自动恢复，不再需要去设置里关掉再打开任务栏自动隐藏。",
-  "installer": "https://github.com/FlowerSea111222/IconBox/releases/download/v1.0.8/IconBox-Setup-1.0.8.exe",
-  "portable": "https://github.com/FlowerSea111222/IconBox/releases/download/v1.0.8/IconBox_v1.0.8_User.zip",
+  "notes": "修复 Win+D（显示桌面）后的 Dock 异常：旧的「显示桌面守护」会把 Dock 抬成 HWND_TOPMOST，与跟随状态机的 HWND_BOTTOM 每帧互相打回，表现为闪烁、层序错乱并一度浮在窗口之上。跟随任务栏时该守护现在自动退场，层序只由 ApplyZOrder 维护（桌面常驻、置底不遮挡、底边唤出时才置顶全部保持）。",
+  "installer": "https://github.com/FlowerSea111222/IconBox/releases/download/v1.0.9/IconBox-Setup-1.0.9.exe",
+  "portable": "https://github.com/FlowerSea111222/IconBox/releases/download/v1.0.9/IconBox_v1.0.9_User.zip",
   "sha256": {
-    "installer": "0212C91723DE8257CEEE94F8BC8E8AF8C08ADEA69BA9ABB57D4CB72ED1D7183B",
-    "portable": "1AC0A60345C27D8F93F62B756A1C50FCCF111CC8C9C957FEA7A6101399B33FA8"
+    "installer": "DFA509A438ABA08043DDF70576583519FC80C083569591FF433AFDADCE446DF9",
+    "portable": "1F077E363B4CBD5A31867060B9CAB402CBEAD3C2A78BCC25C090F74603355F6B"
   }
 }
