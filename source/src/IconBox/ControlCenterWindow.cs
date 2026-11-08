@@ -115,13 +115,24 @@ public class ControlCenterWindow : GlassWindow
 	private Border sysRow;
 	private Border powerCard;
 
+	// 控制中心默认跟随 Dock DIY：下面这组圆角由 Dock 圆角换算，卡片浓度由 Dock 透明度换算。
+	private double cardRadius = 16.0;
+
+	private double rowRadius = 14.0;
+
+	private double smallRowRadius = 10.0;
+
+	private double innerRadius = 8.0;
+
 	public ControlCenterWindow(Controller c)
 		: base(24.0)
 	{
 		C = c;
+		LightTheme = C.Prefs.Light;
 		Width = 384.0;
 		Height = 600.0;
 		ShowInTaskbar = false;
+		DeriveFromDockStyle();
 		BuildUi();
 		refreshTimer = new DispatcherTimer
 		{
@@ -148,6 +159,26 @@ public class ControlCenterWindow : GlassWindow
 		return new SolidColorBrush(LightTheme ? System.Windows.Media.Color.FromArgb(36, 25, 28, 34) : System.Windows.Media.Color.FromArgb(40, byte.MaxValue, byte.MaxValue, byte.MaxValue));
 	}
 
+	// 控制中心默认跟随 Dock DIY：圆角与卡片浓度全部由 Dock 的圆角/透明度换算，
+	// 不再有自己的一套固定数值；调完 Dock 圆角后重新打开控制中心即可看到效果。
+	private void DeriveFromDockStyle()
+	{
+		DockOptions dock = C.Prefs.Dock;
+		double radius = Math.Max(10.0, Math.Min(36.0, dock.Radius));
+		double opacity = Math.Max(0.0, Math.Min(100.0, dock.OpacityPercent));
+		Surface.CornerRadius = new CornerRadius(radius);
+		rowRadius = Math.Round(radius * 0.5);
+		cardRadius = Math.Round(radius * 0.57);
+		smallRowRadius = Math.Round(radius * 0.36);
+		innerRadius = Math.Round(radius * 0.28);
+		cardBrush = new SolidColorBrush(LightTheme
+			? System.Windows.Media.Color.FromArgb((byte)Math.Round(Math.Min(200.0, 60.0 + opacity * 0.85)), byte.MaxValue, byte.MaxValue, byte.MaxValue)
+			: System.Windows.Media.Color.FromArgb((byte)Math.Round(Math.Min(64.0, 4.0 + opacity * 0.30)), byte.MaxValue, byte.MaxValue, byte.MaxValue));
+		hoverBrush = new SolidColorBrush(LightTheme
+			? System.Windows.Media.Color.FromArgb((byte)Math.Round(Math.Min(210.0, 30.0 + opacity * 0.70)), 60, 70, 90)
+			: System.Windows.Media.Color.FromArgb((byte)Math.Round(Math.Min(72.0, 6.0 + opacity * 0.39)), byte.MaxValue, byte.MaxValue, byte.MaxValue));
+	}
+
 	private void RefreshStyle()
 	{
 		LightTheme = C.Prefs.Light;
@@ -159,8 +190,7 @@ public class ControlCenterWindow : GlassWindow
 		Polish.Apply(this, LightTheme);
 		accentColor = IconPacks.AccentColor(dock.Accent);
 		accentBrush = new SolidColorBrush(accentColor);
-		cardBrush = new SolidColorBrush(LightTheme ? System.Windows.Media.Color.FromArgb(120, byte.MaxValue, byte.MaxValue, byte.MaxValue) : System.Windows.Media.Color.FromArgb(26, byte.MaxValue, byte.MaxValue, byte.MaxValue));
-		hoverBrush = new SolidColorBrush(LightTheme ? System.Windows.Media.Color.FromArgb(80, 60, 70, 90) : System.Windows.Media.Color.FromArgb(34, byte.MaxValue, byte.MaxValue, byte.MaxValue));
+		DeriveFromDockStyle();
 		lineBrush = LineBrush();
 		wifiTile.Background = cardBrush;
 		wifiTile.BorderBrush = lineBrush;
@@ -202,7 +232,7 @@ public class ControlCenterWindow : GlassWindow
 	{
 		return new Border
 		{
-			CornerRadius = new CornerRadius(16.0),
+			CornerRadius = new CornerRadius(cardRadius),
 			Padding = new Thickness(16.0),
 			Margin = new Thickness(0.0, 8.0, 0.0, 0.0),
 			BorderThickness = new Thickness(1.0)
@@ -213,7 +243,7 @@ public class ControlCenterWindow : GlassWindow
 	{
 		Border tile = new Border
 		{
-			CornerRadius = new CornerRadius(16.0),
+			CornerRadius = new CornerRadius(cardRadius),
 			Padding = new Thickness(14.0),
 			Margin = new Thickness(4.0, 0.0, 4.0, 0.0),
 			BorderThickness = new Thickness(1.0),
@@ -255,7 +285,7 @@ public class ControlCenterWindow : GlassWindow
 			Border arrowZone = new Border
 			{
 				Background = System.Windows.Media.Brushes.Transparent,
-				CornerRadius = new CornerRadius(8.0),
+				CornerRadius = new CornerRadius(innerRadius),
 				Padding = new Thickness(9.0, 0.0, 5.0, 0.0),
 				Margin = new Thickness(4.0, 0.0, -4.0, 0.0),
 				VerticalAlignment = VerticalAlignment.Stretch,
@@ -385,7 +415,7 @@ public class ControlCenterWindow : GlassWindow
 		// 密码输入
 		passwordPanel = new Border
 		{
-			CornerRadius = new CornerRadius(14.0),
+			CornerRadius = new CornerRadius(rowRadius),
 			Padding = new Thickness(14.0),
 			Margin = new Thickness(0.0, 6.0, 0.0, 6.0),
 			BorderThickness = new Thickness(1.0),
@@ -729,7 +759,7 @@ public class ControlCenterWindow : GlassWindow
 	{
 		Border row = new Border
 		{
-			CornerRadius = new CornerRadius(14.0),
+			CornerRadius = new CornerRadius(rowRadius),
 			Padding = new Thickness(14.0),
 			Margin = new Thickness(4.0, 0.0, 4.0, 10.0),
 			BorderThickness = new Thickness(1.0),
@@ -776,7 +806,7 @@ public class ControlCenterWindow : GlassWindow
 	{
 		Border card = new Border
 		{
-			CornerRadius = new CornerRadius(6.0),
+			CornerRadius = new CornerRadius(Math.Max(4.0, innerRadius * 0.8)),
 			Padding = new Thickness(8.0, 5.0, 8.0, 5.0),
 			Margin = new Thickness(2.0, 0.0, 2.0, 0.0),
 			Background = System.Windows.Media.Brushes.Transparent,
@@ -1278,7 +1308,7 @@ public class ControlCenterWindow : GlassWindow
 	{
 		Border row = new Border
 		{
-			CornerRadius = new CornerRadius(10.0),
+			CornerRadius = new CornerRadius(smallRowRadius),
 			Padding = new Thickness(10.0, 8.0, 10.0, 8.0),
 			Margin = new Thickness(0.0, 3.0, 0.0, 3.0),
 			Background = System.Windows.Media.Brushes.Transparent,
@@ -1622,7 +1652,7 @@ public class ControlCenterWindow : GlassWindow
 			bool connected = parts[2] == "True";
 			Border row = new Border
 			{
-				CornerRadius = new CornerRadius(10.0),
+				CornerRadius = new CornerRadius(smallRowRadius),
 				Padding = new Thickness(10.0, 7.0, 10.0, 7.0),
 				Margin = new Thickness(0.0, 3.0, 0.0, 3.0),
 				Background = System.Windows.Media.Brushes.Transparent
