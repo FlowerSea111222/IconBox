@@ -1,11 +1,11 @@
 {
-  "version": "1.0.6",
-  "released": "2026-11-06",
-  "notes": "修复 9 项问题：启动不再弹「使用推荐配置」；任务栏自动隐藏在窗口创建前即生效（并处理光标压在任务栏上不收起的情况）；Dock 默认压到窗口层级最底、只在鼠标移到底边唤出任务栏时临时置顶；任务栏收起时 Dock 立即移出屏幕、唤出时同步升起；图标自动裁掉四周透明/同色留白；「工具」分类改为工具箱图标、设置「通用」改为滑杆图标；对外名称统一为 IconBox；启动联网检查更新仅在开启「自动检查更新」时进行。",
-  "installer": "https://github.com/FlowerSea111222/IconBox/releases/download/v1.0.6/IconBox-Setup-1.0.6.exe",
-  "portable": "https://github.com/FlowerSea111222/IconBox/releases/download/v1.0.6/IconBox_v1.0.6_User.zip",
+  "version": "1.0.7",
+  "released": "2026-11-08",
+  "notes": "Dock 显示逻辑两项改进：1) 鼠标从任务栏往 Dock 移动的整个底边带都算命中，并保持 1.2 秒不收起，来得及点图标；2) 桌面状态下（Dock 落位处没有别的窗口占用）Dock 常驻显示，任务栏收起也不消失；被其它窗口遮挡时依旧自动让开，不会盖住应用界面。",
+  "installer": "https://github.com/FlowerSea111222/IconBox/releases/download/v1.0.7/IconBox-Setup-1.0.7.exe",
+  "portable": "https://github.com/FlowerSea111222/IconBox/releases/download/v1.0.7/IconBox_v1.0.7_User.zip",
   "sha256": {
-    "installer": "7877D8160FB95DEEFB048315FD3204EA54C9CE24AF37752F4B6198E1D55F4882",
-    "portable": "6B59EA62D5B9130EDA807F9DEFF4DB0F3FA4A96D3D74590D72CE5C92720CD7CD"
+    "installer": "108E1C557913298D541DAF729E156008BB6EEEE99430C53FBA5A5C02A2D7C707",
+    "portable": "46CB775CCBDDF92CFEAAD2FF9FD42766274E835AAF76D5F149B66211370869EF"
   }
 }
