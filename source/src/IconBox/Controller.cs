@@ -186,7 +186,7 @@ public class Controller
 		glassSuppressed = Prefs.GameMode || (Prefs.AutoGameMode && FullscreenState.Active());
 		Tray = new NotifyIcon
 		{
-			Text = "IconBox v1.0.6 · 玻璃启动台",
+			Text = "IconBox v1.0.11 · 玻璃启动台",
 			Icon = (Icon.ExtractAssociatedIcon(Assembly.GetExecutingAssembly().Location) ?? SystemIcons.Application),
 			Visible = true
 		};
@@ -506,18 +506,6 @@ public class Controller
 		{
 			ToggleTaskbarAutoHide();
 		});
-		contextMenuStrip2.Items.Add("备忘录记事板", null, (object s, EventArgs e) =>
-		{
-			ManageWorkspaces();
-		});
-		foreach (Workspace workspace2 in Prefs.Workspaces)
-		{
-			Workspace workspace = workspace2;
-			contextMenuStrip2.Items.Add("打开工作区 · " + workspace.Name, null, (object s, EventArgs e) =>
-			{
-				LaunchWorkspace(workspace);
-			});
-		}
 		contextMenuStrip2.Items.Add("外观方案", null, (object s, EventArgs e) =>
 		{
 			ManageSchemes();
@@ -1790,7 +1778,7 @@ public class Controller
 			bool settingsLight = Prefs.Light;
 			Window w = new Window
 			{
-				Title = "IconBox · 个性化与控制 v1.0.6",
+				Title = "IconBox · 个性化与控制 v1.0.11",
 				Width = Math.Min(940.0, SystemParameters.WorkArea.Width - 40.0),
 				Height = Math.Min(790.0, SystemParameters.WorkArea.Height - 50.0),
 				MinWidth = 560.0,
@@ -2330,10 +2318,6 @@ public class Controller
 					draft = Prefs.Dock.Copy();
 					w.Close();
 				}
-			}));
-			wrapPanel.Children.Add(FeatureUi.Button("创作工作区", () =>
-			{
-				ManageWorkspaces(w);
 			}));
 			wrapPanel.Children.Add(FeatureUi.Button("重置面板位置和尺寸", () =>
 			{
@@ -4357,228 +4341,6 @@ public class Controller
 		finally
 		{
 			Board.ModalBusy = modalBusy;
-		}
-	}
-
-	public void ManageWorkspaces(Window owner = null)
-	{
-		bool modalBusy = Board.ModalBusy;
-		Board.ModalBusy = true;
-		try
-		{
-			Window w = FeatureUi.Dialog("工作区 · 一次打开一组工具", owner ?? OwnerWindow, 780.0, 640.0);
-			Grid grid = new Grid
-			{
-				Margin = new Thickness(22.0)
-			};
-			w.Content = grid;
-			grid.RowDefinitions.Add(new RowDefinition
-			{
-				Height = GridLength.Auto
-			});
-			grid.RowDefinitions.Add(new RowDefinition());
-			grid.RowDefinitions.Add(new RowDefinition
-			{
-				Height = GridLength.Auto
-			});
-			StackPanel stackPanel = new StackPanel();
-			grid.Children.Add(stackPanel);
-			stackPanel.Children.Add(new TextBlock
-			{
-				Text = "把应用、素材文件夹和项目文件组成一个工作区",
-				FontSize = 17.0,
-				Margin = new Thickness(0.0, 0.0, 0.0, 8.0)
-			});
-			System.Windows.Controls.TextBox name = new System.Windows.Controls.TextBox
-			{
-				Text = "创作工作区",
-				MinHeight = 38.0,
-				Margin = new Thickness(0.0, 0.0, 0.0, 12.0)
-			};
-			stackPanel.Children.Add(name);
-			Grid grid2 = new Grid();
-			grid2.ColumnDefinitions.Add(new ColumnDefinition
-			{
-				Width = new GridLength(190.0)
-			});
-			grid2.ColumnDefinitions.Add(new ColumnDefinition());
-			Grid.SetRow(grid2, 1);
-			grid.Children.Add(grid2);
-			System.Windows.Controls.ListBox saved = new System.Windows.Controls.ListBox
-			{
-				Margin = new Thickness(0.0, 0.0, 12.0, 12.0),
-				DisplayMemberPath = "Name"
-			};
-			grid2.Children.Add(saved);
-			System.Windows.Controls.ListBox choices = new System.Windows.Controls.ListBox
-			{
-				Margin = new Thickness(0.0, 0.0, 0.0, 12.0)
-			};
-			Grid.SetColumn(choices, 1);
-			grid2.Children.Add(choices);
-			Dictionary<string, System.Windows.Controls.CheckBox> picked = new Dictionary<string, System.Windows.Controls.CheckBox>(StringComparer.OrdinalIgnoreCase);
-			Workspace current = null;
-			Action<IEnumerable<string>> fill = (IEnumerable<string> paths) =>
-			{
-				HashSet<string> hashSet = new HashSet<string>(paths, StringComparer.OrdinalIgnoreCase);
-				choices.Items.Clear();
-				picked.Clear();
-				foreach (Entry item in Prefs.Apps.Concat(from path in hashSet
-					where !Prefs.Apps.Any((Entry a) => a.Path.Equals(path, StringComparison.OrdinalIgnoreCase))
-					select new Entry
-					{
-						Name = Path.GetFileNameWithoutExtension(path),
-						Path = path
-					}).ToList())
-				{
-					System.Windows.Controls.CheckBox checkBox = new System.Windows.Controls.CheckBox
-					{
-						Content = item.Name,
-						ToolTip = item.Path,
-						IsChecked = hashSet.Contains(item.Path),
-						Margin = new Thickness(5.0)
-					};
-					picked[item.Path] = checkBox;
-					choices.Items.Add(checkBox);
-				}
-			};
-			Action reload = () =>
-			{
-				saved.ItemsSource = null;
-				saved.ItemsSource = Prefs.Workspaces.ToList();
-			};
-			reload();
-			fill(new string[0]);
-			saved.SelectionChanged += (object s, SelectionChangedEventArgs e) =>
-			{
-				current = saved.SelectedItem as Workspace;
-				if (current != null)
-				{
-					name.Text = current.Name;
-					fill(current.Paths);
-				}
-			};
-			WrapPanel wrapPanel = new WrapPanel();
-			Grid.SetRow(wrapPanel, 2);
-			grid.Children.Add(wrapPanel);
-			wrapPanel.Children.Add(FeatureUi.Button("新建", () =>
-			{
-				saved.SelectedItem = null;
-				current = null;
-				name.Text = "新工作区";
-				fill(new string[0]);
-			}));
-			wrapPanel.Children.Add(FeatureUi.Button("全选", () =>
-			{
-				foreach (System.Windows.Controls.CheckBox value in picked.Values)
-				{
-					value.IsChecked = true;
-				}
-			}));
-			wrapPanel.Children.Add(FeatureUi.Button("取消全选", () =>
-			{
-				foreach (System.Windows.Controls.CheckBox value2 in picked.Values)
-				{
-					value2.IsChecked = false;
-				}
-			}));
-			wrapPanel.Children.Add(FeatureUi.Button("保存工作区", () =>
-			{
-				string title = name.Text.Trim();
-				List<string> list = (from x in picked
-					where x.Value.IsChecked == true
-					select x.Key).ToList();
-				if (title.Length == 0 || list.Count == 0)
-				{
-					System.Windows.MessageBox.Show(w, "填写名称并勾选至少一个入口。");
-				}
-				else if (Prefs.Workspaces.Any((Workspace x) => x != current && x.Name.Equals(title, StringComparison.CurrentCultureIgnoreCase)))
-				{
-					System.Windows.MessageBox.Show(w, "工作区名称已存在。");
-				}
-				else
-				{
-					if (current == null)
-					{
-						current = new Workspace();
-						Prefs.Workspaces.Add(current);
-					}
-					current.Name = title;
-					current.Paths = list;
-					Save();
-					RefreshTrayMenu();
-					Workspace selectedItem = current;
-					reload();
-					saved.SelectedItem = selectedItem;
-				}
-			}));
-			wrapPanel.Children.Add(FeatureUi.Button("打开已选", () =>
-			{
-				Workspace work = new Workspace
-				{
-					Name = name.Text,
-					Paths = (from x in picked
-						where x.Value.IsChecked == true
-						select x.Key).ToList()
-				};
-				w.Close();
-				LaunchWorkspace(work);
-			}));
-			wrapPanel.Children.Add(FeatureUi.Button("删除工作区", () =>
-			{
-				if (current != null)
-				{
-					Prefs.Workspaces.Remove(current);
-					current = null;
-					Save();
-					RefreshTrayMenu();
-					reload();
-					fill(new string[0]);
-				}
-			}));
-			w.ShowDialog();
-		}
-		finally
-		{
-			Board.ModalBusy = modalBusy;
-		}
-	}
-
-	public async void LaunchWorkspace(Workspace work)
-	{
-		work.Normalize();
-		Board.CollapseSmooth();
-		RunningWindows.Scan();
-		List<string> failures = new List<string>();
-		foreach (string path in work.Paths)
-		{
-			if (System.Windows.Application.Current == null || System.Windows.Application.Current.Dispatcher.HasShutdownStarted)
-			{
-				return;
-			}
-			try
-			{
-				if (!RunningWindows.IsRunning(Prefs.Apps.FirstOrDefault((Entry a) => a.Path.Equals(path, StringComparison.OrdinalIgnoreCase)) ?? new Entry
-				{
-					Path = path,
-					Name = Path.GetFileNameWithoutExtension(path)
-				}))
-				{
-					Process.Start(new ProcessStartInfo(path)
-					{
-						UseShellExecute = true
-					});
-				}
-			}
-			catch
-			{
-				failures.Add(Path.GetFileName(path));
-			}
-			await Task.Delay(150);
-		}
-		if (failures.Count > 0)
-		{
-			System.Windows.MessageBox.Show("这些入口无法打开：\n" + string.Join("\n", failures), work.Name);
 		}
 	}
 
