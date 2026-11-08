@@ -3560,10 +3560,6 @@ public class BoardWindow : GlassWindow
 		{
 			IconSettings();
 		}, arg3: true);
-		action("工作区", () =>
-		{
-			C.ManageWorkspaces();
-		}, arg3: true);
 		action("外观方案", () =>
 		{
 			C.ManageSchemes();
