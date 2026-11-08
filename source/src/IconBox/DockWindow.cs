@@ -1022,6 +1022,19 @@ public class DockWindow : GlassWindow
 		}
 	}
 
+	// 控制中心展开时，鼠标停在它上面不应该让 Dock 收起（否则控制中心会被连带关闭，滑块根本点不到）。
+	private bool CursorOverControlCenter()
+	{
+		ControlCenterWindow controlCenter = C.ControlCenter;
+		if (controlCenter == null || !controlCenter.IsVisible || source == null)
+		{
+			return false;
+		}
+		System.Drawing.Point position = System.Windows.Forms.Cursor.Position;
+		System.Windows.Point point = source.CompositionTarget.TransformFromDevice.Transform(new System.Windows.Point(position.X, position.Y));
+		return point.X >= controlCenter.Left && point.X <= controlCenter.Left + controlCenter.ActualWidth && point.Y >= controlCenter.Top && point.Y <= controlCenter.Top + controlCenter.ActualHeight;
+	}
+
 	private void UpdateAutoHide()
 	{
 		ReleaseCancelledExternalDrag();
@@ -1047,7 +1060,7 @@ public class DockWindow : GlassWindow
 			bool over = !renderedHidden && point.X >= Left && point.X <= Left + Width && point.Y >= shownTop && point.Y <= shownTop + Height;
 			bool edge = point.X >= Left - 12.0 && point.X <= Left + Width + 12.0 && point.Y >= bottom - C.Prefs.Dock.EdgeRange;
 			bool flag = (ContextMenu != null && ContextMenu.IsOpen) || Items.Children.OfType<System.Windows.Controls.Button>().Any((System.Windows.Controls.Button b) => b.ContextMenu != null && b.ContextMenu.IsOpen);
-			bool flag2 = hidePolicy.Update(DateTime.UtcNow, C.Prefs.Dock.AutoHide, over, edge, ((dragging || DockInputBusy || externalDockDrag) | flag) || C.UiBusy || C.Board.IsVisible, C.Prefs.Dock.HideDelay);
+			bool flag2 = hidePolicy.Update(DateTime.UtcNow, C.Prefs.Dock.AutoHide, over, edge, ((dragging || DockInputBusy || externalDockDrag) | flag) || C.UiBusy || C.Board.IsVisible || CursorOverControlCenter(), C.Prefs.Dock.HideDelay);
 			if (flag2 != renderedHidden)
 			{
 				renderedHidden = flag2;
@@ -1322,7 +1335,7 @@ public class DockWindow : GlassWindow
 			}
 			// 设置窗口打开期间 PinForPreview 要求 Dock 常驻：跟随状态机必须尊重它，
 			// 否则 Dock DIY 调参时 Dock 会被本机隐藏（1.0.28 的预览效果会回归消失）。
-			bool wantVisible = previewPinned || taskbarDip > 0.0 || desktopFront || areaFree || nearBottom || (!renderedHidden && nowUtc <= followHoldUntil);
+			bool wantVisible = previewPinned || taskbarDip > 0.0 || desktopFront || areaFree || nearBottom || (!renderedHidden && nowUtc <= followHoldUntil) || CursorOverControlCenter();
 			if (!wantVisible)
 			{
 				if (!renderedHidden)
@@ -2550,6 +2563,11 @@ public class DockWindow : GlassWindow
 
 	private void AnimateDockVisibility(bool hide, double target)
 	{
+		// Dock 收起时挂在 Dock 上的控制中心一并收起，避免留下一个悬空的浮层。
+		if (hide)
+		{
+			C.ControlCenter?.ClosePanel();
+		}
 		double top = Top;
 		// 置顶策略（问题 8 / 9）：
 		//   - 跟随任务栏：z 序完全交给 ApplyZOrder —— 只有鼠标停在屏幕底边、正在唤出任务栏时才置顶，
