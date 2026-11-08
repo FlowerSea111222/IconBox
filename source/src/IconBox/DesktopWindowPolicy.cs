@@ -271,6 +271,38 @@ private static extern bool ShowWindow(IntPtr window, int command);
 	[StructLayout(LayoutKind.Sequential)]
 	public struct POINT { public int X; public int Y; }
 
+	[DllImport("user32.dll")]
+	private static extern uint GetWindowThreadProcessId(IntPtr window, out uint processId);
+
+	// 判断屏幕上一个点（物理像素）是否「空着」：命中桌面/任务栏/我们自己的窗口都算空，
+	// 命中别的应用的顶层窗口才算被占用。Dock 用它决定能否在桌面状态下常驻显示。
+	public static bool PointIsFree(IntPtr own, int x, int y)
+	{
+		try
+		{
+			POINT pt = new POINT { X = x, Y = y };
+			IntPtr hit = WindowFromPoint(pt);
+			if (hit == IntPtr.Zero || hit == own)
+			{
+				return true;
+			}
+			string cls = ClassNameOf(hit);
+			if (IsDesktopClass(cls) || string.Equals(cls, "Shell_TrayWnd", StringComparison.OrdinalIgnoreCase) || string.Equals(cls, "Shell_SecondaryTrayWnd", StringComparison.OrdinalIgnoreCase))
+			{
+				return true;
+			}
+			uint hitPid;
+			GetWindowThreadProcessId(hit, out hitPid);
+			uint ownPid;
+			GetWindowThreadProcessId(own, out ownPid);
+			return hitPid != 0u && hitPid == ownPid;
+		}
+		catch
+		{
+			return false;
+		}
+	}
+
 	// 判断窗口中心点是否被别的顶层窗口盖住（用于验证「显示桌面」后是否真的看得见）。
 	public static bool IsCoveredByOtherWindow(IntPtr window)
 	{
