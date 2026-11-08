@@ -71,9 +71,6 @@ public class Preferences
 	public DockOptions Dock = new DockOptions();
 
 	[DataMember(EmitDefaultValue = false)]
-	public List<Workspace> Workspaces = new List<Workspace>();
-
-	[DataMember(EmitDefaultValue = false)]
 	public PlacementOptions Placement = new PlacementOptions();
 
 	[DataMember]
@@ -281,15 +278,6 @@ public class Preferences
 		}
 		Dock.Normalize();
 		DockLayoutRules.SyncApps(this);
-		if (Workspaces == null)
-		{
-			Workspaces = new List<Workspace>();
-		}
-		Workspaces = Workspaces.Where((Workspace x) => x != null && !string.IsNullOrWhiteSpace(x.Name)).ToList();
-		foreach (Workspace workspace in Workspaces)
-		{
-			workspace.Normalize();
-		}
 		if (Placement == null)
 		{
 			Placement = new PlacementOptions();
