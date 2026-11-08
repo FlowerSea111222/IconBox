@@ -1,11 +1,11 @@
 {
-  "version": "1.0.7",
+  "version": "1.0.8",
   "released": "2026-11-08",
-  "notes": "Dock 显示逻辑两项改进：1) 鼠标从任务栏往 Dock 移动的整个底边带都算命中，并保持 1.2 秒不收起，来得及点图标；2) 桌面状态下（Dock 落位处没有别的窗口占用）Dock 常驻显示，任务栏收起也不消失；被其它窗口遮挡时依旧自动让开，不会盖住应用界面。",
-  "installer": "https://github.com/FlowerSea111222/IconBox/releases/download/v1.0.7/IconBox-Setup-1.0.7.exe",
-  "portable": "https://github.com/FlowerSea111222/IconBox/releases/download/v1.0.7/IconBox_v1.0.7_User.zip",
+  "notes": "Dock 唤出加入自愈：跟随状态机如果因为「拖动标志未复位」「窗口被系统隐藏」「合成帧回调停摆」而卡死，会在鼠标移到底部时自动恢复，不再需要去设置里关掉再打开任务栏自动隐藏。",
+  "installer": "https://github.com/FlowerSea111222/IconBox/releases/download/v1.0.8/IconBox-Setup-1.0.8.exe",
+  "portable": "https://github.com/FlowerSea111222/IconBox/releases/download/v1.0.8/IconBox_v1.0.8_User.zip",
   "sha256": {
-    "installer": "108E1C557913298D541DAF729E156008BB6EEEE99430C53FBA5A5C02A2D7C707",
-    "portable": "46CB775CCBDDF92CFEAAD2FF9FD42766274E835AAF76D5F149B66211370869EF"
+    "installer": "0212C91723DE8257CEEE94F8BC8E8AF8C08ADEA69BA9ABB57D4CB72ED1D7183B",
+    "portable": "1AC0A60345C27D8F93F62B756A1C50FCCF111CC8C9C957FEA7A6101399B33FA8"
   }
 }
