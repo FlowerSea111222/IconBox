@@ -112,6 +112,16 @@ public class DockWindow : GlassWindow
 	private double followTargetTop = double.NaN;
 	private DateTime followTickUtc;
 
+	// Dock 在跟随模式下的可见性保持时间：任务栏收起/鼠标离开底边后仍然多留 1.2 秒，
+	// 否则「任务栏一收起 Dock 立刻消失」，鼠标还没来得及移上去点图标。
+	private DateTime followHoldUntil;
+	private string followShowReason = "init";
+
+	// CompositionTarget.Rendering 只在 WPF 有渲染动作时才持续触发：窗口静止且无动画时合成会进入空闲，
+	// 回调就停了，Dock 会卡在「隐藏」状态再也回不来。这个看门狗在空闲时补一拍，保证状态机始终推进。
+	private System.Windows.Threading.DispatcherTimer followWatchdog;
+	private DateTime followFrameUtc;
+
 
 	private double shownTop;
 
@@ -724,6 +734,7 @@ public class DockWindow : GlassWindow
 		// 布局/显示器变化后重新读取 DPI 缩放（跟随任务栏的逐帧循环里使用缓存值）。
 		followDpi = 0.0;
 		followOnTop = false;
+		followZOrderApplied = false;
 		if (DockInputBusy)
 		{
 			return;
@@ -739,8 +750,9 @@ public class DockWindow : GlassWindow
 		MotionLevel = dock.MotionLevel;
 		ConfigureGlass(dock);
 		// 仅「始终置顶」才常驻 Topmost；AutoHide 不再强制 Topmost（否则 Dock 会浮在浏览器等所有窗口之上）。
-		// 自动隐藏时只在「已弹出（reveal）」期间临时置顶，隐藏态回到普通层，避免遮挡其它应用。
-		Topmost = dock.AlwaysOnTop;
+		// 跟随任务栏时 z 序完全交给 ApplyZOrder（WPF 的 Topmost 属性与原生 SetWindowPos 同时写会互相打回，
+		// 表现为闪烁并把「始终置顶」吃掉），所以这里把 WPF 那一侧保持为 false。
+		Topmost = dock.AlwaysOnTop && !dock.FollowTaskbar;
 		revealSerial++;
 		BeginAnimation(Window.TopProperty, null);
 		renderedHidden = false;
@@ -1057,9 +1069,141 @@ public class DockWindow : GlassWindow
 		{
 			followFrameStamp = TimeSpan.Zero;
 			followDpi = 0.0;
+			followFrameUtc = DateTime.UtcNow;
 			CompositionTarget.Rendering += OnFollowFrame;
 			followFramesHooked = true;
+			if (followWatchdog == null)
+			{
+				followWatchdog = new System.Windows.Threading.DispatcherTimer(System.Windows.Threading.DispatcherPriority.Background)
+				{
+					Interval = TimeSpan.FromMilliseconds(120.0)
+				};
+				followWatchdog.Tick += OnFollowWatchdog;
+			}
+			followWatchdog.Start();
 		}
+	}
+
+	private void OnFollowWatchdog(object sender, EventArgs e)
+	{
+		// 自愈：跟随模式的整个状态机只由「合成帧回调 + 这个看门狗」驱动，
+		// 任一处停摆就会永久失效（用户反馈过：必须去设置里关掉再打开任务栏自动隐藏才恢复）。
+		// 所以这里除了补拍，还主动修复三种常见的卡死状态。
+		if (C.Prefs.Dock.FollowTaskbar && !followFramesHooked)
+		{
+			AttachFollowFrames();
+			Store.Trace("FOLLOW heal frames reattach");
+		}
+		if (dragging && (GetAsyncKeyState((!SystemInformation.MouseButtonsSwapped) ? 1 : 2) & 0x8000) == 0)
+		{
+			// 拖动 Dock 时如果松开事件丢了（窗口失焦/被隐藏/捕获丢失），dragging 会永久为 true，
+			// 入口守卫因此一直返回；这里按「物理鼠标键已松开」强制复位。
+			dragging = false;
+			Store.Trace("FOLLOW heal drag reset");
+		}
+		// WPF 的 IsVisible 只看它自己的状态；窗口被 ShowWindow(SW_HIDE)/显示桌面隐藏时它是 true，
+		// 必须用 HWND 层的 IsWindowShown 才能发现「其实已经不可见」。
+		IntPtr followHandle = new WindowInteropHelper(this).Handle;
+		bool hwndShown = (followHandle != IntPtr.Zero) && DesktopWindowPolicy.IsWindowShown(followHandle);
+		if ((!IsVisible || !hwndShown) && CursorInDockBand())
+		{
+			HealShowDock();
+		}
+		// 只有合成帧回调确实断流时才补拍，正常 60Hz 时不与它抢工作。
+		if ((DateTime.UtcNow - followFrameUtc).TotalMilliseconds >= 100.0)
+		{
+			UpdateFollowTaskbar(double.NaN);
+		}
+	}
+
+	// 光标是否落在「底部唤出带」（屏幕底边一条、横向覆盖 Dock 左右各 16 DIP）。
+	private bool CursorInDockBand()
+	{
+		try
+		{
+			IntPtr handle = new WindowInteropHelper(this).Handle;
+			if (handle == IntPtr.Zero)
+			{
+				return false;
+			}
+			double dpi = ((followDpi > 0.0) ? followDpi : VisualTreeHelper.GetDpi(this).DpiScaleY);
+			if (dpi <= 0.0) { dpi = 1.0; }
+			int bottomPx = TaskbarState.ScreenBottomPxFor(handle);
+			if (bottomPx <= 0)
+			{
+				return false;
+			}
+			double screenBottom = bottomPx / dpi;
+			System.Drawing.Point cursorPx = System.Windows.Forms.Cursor.Position;
+			System.Windows.Point cursorDip = source.CompositionTarget.TransformFromDevice.Transform(new System.Windows.Point(cursorPx.X, cursorPx.Y));
+			double band = Math.Max(C.Prefs.Dock.EdgeRange, Height);
+			return cursorDip.X >= Left - 16.0 && cursorDip.X <= Left + Width + 16.0 && cursorDip.Y >= screenBottom - band;
+		}
+		catch (Exception ex)
+		{
+			Store.Log(ex);
+			return false;
+		}
+	}
+
+	// 窗口被外部隐藏（显示桌面/游戏模式/Explorer 处理工具窗口）后，跟随模式下没有任何路径会再 Show，
+	// 于是 Dock 永久消失。用户把鼠标移到底部时强制恢复一次。
+	private void HealShowDock()
+	{
+		try
+		{
+			IntPtr handle = new WindowInteropHelper(this).Handle;
+			if (handle == IntPtr.Zero)
+			{
+				return;
+			}
+			DesktopWindowPolicy.ShowNoActivate(handle);
+			renderedHidden = true;
+			followTargetTop = double.NaN;
+			followMoveTicks = 0L;
+			Store.Trace("FOLLOW heal show window vis=" + IsVisible);
+			UpdateFollowTaskbar(double.NaN);
+		}
+		catch (Exception ex)
+		{
+			Store.Log(ex);
+		}
+	}
+
+	// Dock 将要落位的位置是否空着（桌面/任务栏/我们自己的窗口都算空）。
+	// 用它判断「现在是不是桌面状态」比只看前台窗口稳：桌面被点一下前台就变 Progman，
+	// 但只要底层没有别的应用占着这块区域，Dock 常驻显示也不会遮住任何东西。
+	// 结果缓存 200ms，避免每帧走 WindowFromPoint。
+	private DateTime dockFreeStamp;
+	private bool dockFreeCached;
+
+	private bool DockAreaFree()
+	{
+		DateTime now = DateTime.UtcNow;
+		if ((now - dockFreeStamp).TotalMilliseconds < 200.0)
+		{
+			return dockFreeCached;
+		}
+		dockFreeStamp = now;
+		bool free = false;
+		try
+		{
+			IntPtr handle = new WindowInteropHelper(this).Handle;
+			if (handle != IntPtr.Zero)
+			{
+				double dpi = ((followDpi > 0.0) ? followDpi : 1.0);
+				double restTop = ((shownTop > 0.0) ? shownTop : (dockScreenArea.Bottom - Height - C.Prefs.DockGap));
+				int pixelX = (int)Math.Round((Left + Width * 0.5) * dpi);
+				int pixelY = (int)Math.Round((restTop + Height * 0.5) * dpi);
+				free = DesktopWindowPolicy.PointIsFree(handle, pixelX, pixelY);
+			}
+		}
+		catch (Exception ex)
+		{
+			Store.Log(ex);
+		}
+		dockFreeCached = free;
+		return free;
 	}
 
 	private void DetachFollowFrames()
@@ -1069,6 +1213,10 @@ public class DockWindow : GlassWindow
 			CompositionTarget.Rendering -= OnFollowFrame;
 			followFramesHooked = false;
 			followFrameStamp = TimeSpan.Zero;
+		}
+		if (followWatchdog != null)
+		{
+			followWatchdog.Stop();
 		}
 	}
 
@@ -1089,6 +1237,7 @@ public class DockWindow : GlassWindow
 		}
 		double frameDelta = ((followFrameStamp == TimeSpan.Zero) ? double.NaN : (renderingTime - followFrameStamp).TotalSeconds);
 		followFrameStamp = renderingTime;
+		followFrameUtc = DateTime.UtcNow;
 		UpdateFollowTaskbar(frameDelta);
 	}
 
@@ -1129,9 +1278,52 @@ public class DockWindow : GlassWindow
 			double minTop = dockScreenArea.Top;
 			double maxTop = screenBottom - Height;
 			target = Math.Max(minTop, Math.Min(maxTop, target));
-			// Dock 的可见性完全跟随任务栏：任务栏收起（可见高度为 0）时 Dock 立刻沉到屏幕外
-			// 并撤销置顶；任务栏弹出时 Dock 同时升起，最大化窗口下也能一起看见。
+			// Dock 的可见性策略（用户反馈：任务栏一收起 Dock 立刻消失、来不及点；桌面上应常驻）：
+			//   1) 任务栏弹出 → 可见；
+			//   2) 桌面在前台 → 常驻可见，任务栏收起也不消失；
+			//   3) 鼠标落在屏幕底边的 Dock 区域 → 可见（从任务栏往上移时不会半路消失）；
+			//   4) 以上条件消失后再保持 1.2 秒，留出把鼠标移到 Dock 上点图标的时间。
+			DateTime nowUtc = DateTime.UtcNow;
+			bool nearBottom = false;
+			try
+			{
+				System.Drawing.Point cursorPx = System.Windows.Forms.Cursor.Position;
+				System.Windows.Point cursorDip = source.CompositionTarget.TransformFromDevice.Transform(new System.Windows.Point(cursorPx.X, cursorPx.Y));
+				double band = Math.Max(C.Prefs.Dock.EdgeRange, Height);
+				// 可见时按 Dock 实际矩形（含 16 DIP 余量）判定悬停，隐藏时按屏幕底边的高带判定唤出：
+				// 这样从任务栏往上移到 Dock 的整段路都在判定区内，不会中途消失。
+				double hitTop = (renderedHidden ? (screenBottom - band) : (Top - 16.0));
+				nearBottom = cursorDip.X >= Left - 16.0 && cursorDip.X <= Left + Width + 16.0 && cursorDip.Y >= hitTop && cursorDip.Y <= screenBottom;
+			}
+			catch (Exception ex8)
+			{
+				Store.Log(ex8);
+			}
+			bool desktopFront = false;
+			bool areaFree = false;
 			if (taskbarDip <= 0.0)
+			{
+				try
+				{
+					desktopFront = DesktopWindowPolicy.DesktopForeground();
+				}
+				catch (Exception ex9)
+				{
+					Store.Log(ex9);
+				}
+				// 桌面在前台只是一种「没有被别的窗口占用」的常见情形；
+				// 更稳的判据是 Dock 所在位置本身是否空着（桌面/任务栏/我们自己都算空）。
+				areaFree = DockAreaFree();
+			}
+			if (taskbarDip > 0.0 || desktopFront || areaFree || nearBottom)
+			{
+				followHoldUntil = nowUtc.AddSeconds(1.2);
+				followShowReason = ((taskbarDip > 0.0) ? "taskbar" : (desktopFront ? "desktop" : (areaFree ? "free" : "hover")));
+			}
+			// 设置窗口打开期间 PinForPreview 要求 Dock 常驻：跟随状态机必须尊重它，
+			// 否则 Dock DIY 调参时 Dock 会被本机隐藏（1.0.28 的预览效果会回归消失）。
+			bool wantVisible = previewPinned || taskbarDip > 0.0 || desktopFront || areaFree || nearBottom || (!renderedHidden && nowUtc <= followHoldUntil);
+			if (!wantVisible)
 			{
 				if (!renderedHidden)
 				{
@@ -1140,7 +1332,7 @@ public class DockWindow : GlassWindow
 					followMoveTicks = 0L;
 					ApplyZOrder(false);
 					AnimateDockVisibility(hide: true, screenBottom + 8.0);
-					Store.Trace("DOCK follow hide taskbar-hidden");
+					Store.Trace("DOCK follow hide reason=" + followShowReason);
 				}
 				return;
 			}
@@ -1148,31 +1340,21 @@ public class DockWindow : GlassWindow
 			{
 				renderedHidden = false;
 				followOnTop = false;
+				followZOrderApplied = false;
 				followTargetTop = target;
 				shownTop = target;
 				settledTop = target;
 				followMoveTicks = 0L;
+				followHoldUntil = nowUtc.AddSeconds(1.2);
 				// 从屏幕外起步，交给下面的指数平滑抬上来（约 200ms），不做瞬间跳位。
 				BeginAnimation(Window.TopProperty, null);
 				Top = screenBottom + 8.0;
-				Store.Trace("DOCK follow show taskbar-visible");
+				Store.Trace("DOCK follow show reason=" + followShowReason);
 			}
-			// 置顶只在「鼠标停在屏幕底边（正在唤出任务栏）」时才生效：这样任务栏弹出时 Dock 能压过
-			// 最大化窗口一起被看见（问题 9），鼠标离开后立刻退回普通层、并压到同级窗口最底，
-			// 保证任何时候都不会盖在其它软件界面上（问题 8）。
-			bool nearBottom = false;
-			try
-			{
-				System.Drawing.Point cursorPx = System.Windows.Forms.Cursor.Position;
-				System.Windows.Point cursorDip = source.CompositionTarget.TransformFromDevice.Transform(new System.Windows.Point(cursorPx.X, cursorPx.Y));
-				double band = Math.Max(C.Prefs.Dock.EdgeRange, Height);
-				nearBottom = cursorDip.Y >= screenBottom - band;
-			}
-			catch (Exception ex8)
-			{
-				Store.Log(ex8);
-			}
-			ApplyZOrder(nearBottom);
+			// 置顶只在三种情况下生效：鼠标停在屏幕底边（正在唤出任务栏/正要点 Dock）、
+			// 用户开了「始终置顶」、或设置里正在做 Dock 预览。其余时刻一律压到最底，
+			// 保证 Dock 静止时不会盖在其它软件界面上。
+			ApplyZOrder(nearBottom || C.Prefs.Dock.AlwaysOnTop || previewPinned);
 			// 帧间隔优先取合成帧时间戳（CompositionTarget.Rendering 自带），比 DateTime.UtcNow 稳定；
 			// 定时调用（Refresh/开关切换）时没有帧时间戳，退回墙钟差值。
 			double num2 = frameDelta;
@@ -2333,18 +2515,27 @@ public class DockWindow : GlassWindow
 	// 其余时刻一律非置顶并压到同级窗口最底，保证不会盖住其它软件界面（问题 8）。
 	// 直接用 SetWindowPos 改窗口层级：WPF 的 Topmost 属性会被 GuardAgainstDesktop 等路径改回，
 	// 而原生 HWND_TOPMOST / HWND_BOTTOM 是幂等且立即可见的。
+	// 「已把当前层级真正写进 HWND」的标记：层级只在变化时写一次。
+	// 每帧无条件 SetWindowPos 会以 60Hz 产生 WM_WINDOWPOSCHANGED，既浪费 DWM 合成，也会反复触发展开链。
+	private bool followZOrderApplied;
+
 	private void ApplyZOrder(bool onTop)
 	{
-		bool changed = followOnTop != onTop;
-		followOnTop = onTop;
 		try
 		{
+			if (followZOrderApplied && followOnTop == onTop)
+			{
+				return;
+			}
 			IntPtr handle = new WindowInteropHelper(this).Handle;
 			if (handle == IntPtr.Zero)
 			{
 				return;
 			}
+			bool changed = followOnTop != onTop;
 			Native.SetWindowPos(handle, new IntPtr(onTop ? -1 : 1), 0, 0, 0, 0, 0x13u);
+			followOnTop = onTop;
+			followZOrderApplied = true;
 			if (changed)
 			{
 				Store.Trace("ZORDER " + (onTop ? "topmost" : "bottom"));
@@ -2864,6 +3055,13 @@ public class DockWindow : GlassWindow
 	{
 		// 用户开启「始终置顶」才在前台非桌面时仍保持 Topmost；否则降回普通层，避免浮在浏览器等应用之上。
 		return C.Prefs.Dock.AlwaysOnTop;
+	}
+
+	// 跟随任务栏时，Dock 的显示/隐藏（desktopFront / areaFree / nearBottom）与 z 序（ApplyZOrder）
+	// 全由下列跟随状态机负责，必须让旧的「显示桌面守护」退场；两者同时改写 HWND 层级会互相打回。
+	protected override bool ManagesOwnDesktopVisibility()
+	{
+		return C.Prefs.Dock.FollowTaskbar;
 	}
 
 	public void BeginBoardPinDrag()
