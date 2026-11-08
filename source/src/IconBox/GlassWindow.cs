@@ -87,12 +87,28 @@ public class GlassWindow : Window
 		return false;
 	}
 
+	// 显示/隐藏与 z 序是否已由子类自己的状态机负责（Dock 跟随任务栏时就是这种情况）。
+	// 为 true 时这里完全不再抬升窗口：否则本守护的 HWND_TOPMOST 与子类的 HWND_BOTTOM
+	// 会按帧互相打回，表现为 Win+D 后闪烁、位置跳动，最后停在窗口之上。
+	protected virtual bool ManagesOwnDesktopVisibility()
+	{
+		return false;
+	}
+
 	internal void GuardAgainstDesktop()
 	{
 		try
 		{
 			if (!IsLoaded || !KeepsAboveDesktop)
 			{
+				return;
+			}
+			if (ManagesOwnDesktopVisibility())
+			{
+				if (desktopGuardTimer != null)
+				{
+					desktopGuardTimer.Stop();
+				}
 				return;
 			}
 			// 只在「前台确实是桌面」时才抬升：平时保持普通层（不遮其它应用）。
