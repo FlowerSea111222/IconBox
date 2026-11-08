@@ -97,6 +97,7 @@ public class DockWindow : GlassWindow
 	// 设置窗口打开期间把 Dock 常驻显示，用户调 Dock DIY / 面板主题时能当场看到变化，
 	// 不必先关掉设置再回来确认（用户反馈「调完看不到效果」）。
 	private bool previewPinned;
+	private DateTime overlayAwaySince = DateTime.MinValue;
 
 	private bool renderedHidden;
 
@@ -307,6 +308,7 @@ public class DockWindow : GlassWindow
 		runningTimer.Tick += (object s, EventArgs e) =>
 		{
 			ReleaseCancelledExternalDrag();
+		UpdateOverlayAutoClose();
 			C.CheckGameMode();
 			RunningWindows.SampleForeground();
 			if (!C.GlassSuppressed && (IsVisible || C.Board.IsVisible) && (C.Prefs.Dock.ShowRunning || taskWheel.Running))
@@ -1023,6 +1025,13 @@ public class DockWindow : GlassWindow
 	}
 
 	// 控制中心展开时，鼠标停在它上面不应该让 Dock 收起（否则控制中心会被连带关闭，滑块根本点不到）。
+	// 控制中心只要存在实例就算打开着（它自己关窗时会把 C.ControlCenter 置空），
+	// 这段时间 Dock 必须常驻，否则鼠标移上去的瞬间 Dock 就先收起，连带着把控制中心也关掉。
+	private bool ControlCenterOpen()
+	{
+		return C.ControlCenter != null && C.ControlCenter.IsVisible && (C.ControlCenter.IsActive || CursorOverControlCenter());
+	}
+
 	private bool CursorOverControlCenter()
 	{
 		ControlCenterWindow controlCenter = C.ControlCenter;
@@ -1035,9 +1044,82 @@ public class DockWindow : GlassWindow
 		return point.X >= controlCenter.Left && point.X <= controlCenter.Left + controlCenter.ActualWidth && point.Y >= controlCenter.Top && point.Y <= controlCenter.Top + controlCenter.ActualHeight;
 	}
 
+	// 托盘界面（Dock 上的运行列表弹层）是否打开。
+	private bool TrayPanelOpen()
+	{
+		return runningListPopup != null && runningListPopup.IsOpen;
+	}
+
+	// 光标是否停在托盘界面上：弹层是独立 HWND，直接问它自己的命中状态最准。
+	private bool CursorOverTrayPanel()
+	{
+		if (runningListPopup == null || !runningListPopup.IsOpen) return false;
+		System.Windows.FrameworkElement child = runningListPopup.Child as System.Windows.FrameworkElement;
+		return child != null && child.IsMouseOver;
+	}
+
+	// 挂在 Dock 上的任一浮层（控制中心 / 托盘界面）打开或被悬停时，Dock 都不收起。
+	// 统一成一个入口，避免两处规则各自漂移。
+	private bool OverlayOpen()
+	{
+		return ControlCenterOpen() || CursorOverControlCenter() || TrayPanelOpen() || CursorOverTrayPanel();
+	}
+
+	// 关闭托盘界面（控制中心打开前必须先关掉它，两者互斥）。
+	public void CloseRunningList()
+	{
+		if (runningListPopup != null && runningListPopup.IsOpen)
+		{
+			runningListPopup.IsOpen = false;
+		}
+	}
+
+	// 光标是否压在 Dock 本体上（含 8 DIP 余量）。
+	private bool CursorOverDock()
+	{
+		if (source == null) return false;
+		System.Drawing.Point screenPoint = System.Windows.Forms.Cursor.Position;
+		System.Windows.Point dip = source.CompositionTarget.TransformFromDevice.Transform(new System.Windows.Point(screenPoint.X, screenPoint.Y));
+		return dip.X >= Left - 8.0 && dip.X <= Left + Width + 8.0 && dip.Y >= Top - 8.0 && dip.Y <= Top + Height + 8.0;
+	}
+
+	// 光标离开 Dock 与浮层一段时间后收起浮层：
+	// 否则 Dock 因为浮层常驻而不收起，控制中心 / 托盘界面就成了甩不掉的残留窗口。
+	private void UpdateOverlayAutoClose()
+	{
+		bool open = TrayPanelOpen() || (C.ControlCenter != null && C.ControlCenter.IsVisible);
+		if (!open)
+		{
+			overlayAwaySince = DateTime.MinValue;
+			return;
+		}
+		if (CursorOverControlCenter() || CursorOverTrayPanel() || CursorOverDock())
+		{
+			overlayAwaySince = DateTime.MinValue;
+			return;
+		}
+		DateTime now = DateTime.UtcNow;
+		if (overlayAwaySince == DateTime.MinValue)
+		{
+			overlayAwaySince = now;
+			return;
+		}
+		if ((now - overlayAwaySince).TotalMilliseconds < 900.0)
+		{
+			return;
+		}
+		overlayAwaySince = DateTime.MinValue;
+		Store.Trace("OVERLAY autoclose away");
+		CloseRunningList();
+		C.ControlCenter?.ClosePanel();
+
+	}
+
+
 	private void UpdateAutoHide()
 	{
 		ReleaseCancelledExternalDrag();
+		UpdateOverlayAutoClose();
 		// 跟随任务栏模式优先：此时 Dock 的升降完全由任务栏控制，禁用基于悬停的自动隐藏，避免两条逻辑抢 Top。
 		if (C.Prefs.Dock.FollowTaskbar)
 		{
@@ -1060,7 +1142,7 @@ public class DockWindow : GlassWindow
 			bool over = !renderedHidden && point.X >= Left && point.X <= Left + Width && point.Y >= shownTop && point.Y <= shownTop + Height;
 			bool edge = point.X >= Left - 12.0 && point.X <= Left + Width + 12.0 && point.Y >= bottom - C.Prefs.Dock.EdgeRange;
 			bool flag = (ContextMenu != null && ContextMenu.IsOpen) || Items.Children.OfType<System.Windows.Controls.Button>().Any((System.Windows.Controls.Button b) => b.ContextMenu != null && b.ContextMenu.IsOpen);
-			bool flag2 = hidePolicy.Update(DateTime.UtcNow, C.Prefs.Dock.AutoHide, over, edge, ((dragging || DockInputBusy || externalDockDrag) | flag) || C.UiBusy || C.Board.IsVisible || CursorOverControlCenter(), C.Prefs.Dock.HideDelay);
+			bool flag2 = hidePolicy.Update(DateTime.UtcNow, C.Prefs.Dock.AutoHide, over, edge, ((dragging || DockInputBusy || externalDockDrag) | flag) || C.UiBusy || C.Board.IsVisible || OverlayOpen(), C.Prefs.Dock.HideDelay);
 			if (flag2 != renderedHidden)
 			{
 				renderedHidden = flag2;
@@ -1335,7 +1417,7 @@ public class DockWindow : GlassWindow
 			}
 			// 设置窗口打开期间 PinForPreview 要求 Dock 常驻：跟随状态机必须尊重它，
 			// 否则 Dock DIY 调参时 Dock 会被本机隐藏（1.0.28 的预览效果会回归消失）。
-			bool wantVisible = previewPinned || taskbarDip > 0.0 || desktopFront || areaFree || nearBottom || (!renderedHidden && nowUtc <= followHoldUntil) || CursorOverControlCenter();
+			bool wantVisible = previewPinned || taskbarDip > 0.0 || desktopFront || areaFree || nearBottom || (!renderedHidden && nowUtc <= followHoldUntil) || OverlayOpen();
 			if (!wantVisible)
 			{
 				if (!renderedHidden)
@@ -2567,6 +2649,7 @@ public class DockWindow : GlassWindow
 		if (hide)
 		{
 			C.ControlCenter?.ClosePanel();
+			CloseRunningList();
 		}
 		double top = Top;
 		// 置顶策略（问题 8 / 9）：
@@ -3304,6 +3387,7 @@ public class DockWindow : GlassWindow
 				runningListPopup.IsOpen = false;
 				return;
 			}
+			C.ControlCenter?.ClosePanel();
 			runningListPopup = OpenRunningList(running);
 		});
 	}
