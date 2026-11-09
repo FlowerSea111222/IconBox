@@ -1,11 +1,11 @@
 {
-  "version": "1.0.16",
+  "version": "1.0.17",
   "released": "2026-11-09",
-  "notes": "鼠标离开控制中心或托盘界面后，浮层与 Dock 栏同时收起，不再出现浮层没了、Dock 还留在屏幕上的情况；把鼠标移回屏幕底边即可再次唤出 Dock。",
-  "installer": "https://github.com/FlowerSea111222/IconBox/releases/download/v1.0.16/IconBox-Setup-1.0.16.exe",
-  "portable": "https://github.com/FlowerSea111222/IconBox/releases/download/v1.0.16/IconBox_v1.0.16_User.zip",
+  "notes": "最大化窗口（如浏览器、WPS）前台时，Dock 不再被误判为「全屏游戏」而整体隐藏：开启任务栏自动隐藏时，Dock 随任务栏一起弹出、一起收起，不会单独冒出来；开启彻底隐藏任务栏时，只有鼠标压到屏幕最底边才唤出 Dock。",
+  "installer": "https://github.com/FlowerSea111222/IconBox/releases/download/v1.0.17/IconBox-Setup-1.0.17.exe",
+  "portable": "https://github.com/FlowerSea111222/IconBox/releases/download/v1.0.17/IconBox_v1.0.17_User.zip",
   "sha256": {
-    "installer": "BCF1E33D6E837D042A6AF4BEBB815234576ECAF1B9D3285BC46785CD18199C22",
-    "portable": "E4A304E54AAD509629B966C42BBAE75CD27309B6D2ACDD07C1265AF98D3576EC"
+    "installer": "8623432DA49F331251EAE8AC5783EB989785E568CB1FD622066A63C4D2983965",
+    "portable": "6815C71D476C045938C21A150C96A2EAEB1DDDA1486B83EF524A5E2C82D682DC"
   }
 }
