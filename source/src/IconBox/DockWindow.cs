@@ -1952,6 +1952,8 @@ public class DockWindow : GlassWindow
 		button.Margin = new Thickness(o.Spacing / 2.0, 0.0, o.Spacing / 2.0, 0.0);
 		// 悬停显示纯文字提示（跟随 Dock 玻璃样式）
 		button.ToolTip = DockTip(tip);
+		// 无障碍名称：读屏软件与 UI 自动化据此识别每个按钮（此前所有 Dock 按钮都是无名按钮）。
+		System.Windows.Automation.AutomationProperties.SetName(button, (entry != null) ? entry.Name : tip);
 		FrameworkElementFactory frameworkElementFactory = new FrameworkElementFactory(typeof(Border));
 		frameworkElementFactory.SetValue(Border.BackgroundProperty, new SolidColorBrush(System.Windows.Media.Color.FromArgb(1, byte.MaxValue, byte.MaxValue, byte.MaxValue)));
 		FrameworkElementFactory frameworkElementFactory2 = new FrameworkElementFactory(typeof(ContentPresenter));
