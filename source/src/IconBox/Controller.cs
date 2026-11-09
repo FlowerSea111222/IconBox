@@ -186,7 +186,7 @@ public class Controller
 		glassSuppressed = Prefs.GameMode || (Prefs.AutoGameMode && FullscreenState.Active());
 		Tray = new NotifyIcon
 		{
-			Text = "IconBox v1.0.21 · 玻璃启动台",
+			Text = "IconBox v1.0.22 · 玻璃启动台",
 			Icon = (Icon.ExtractAssociatedIcon(Assembly.GetExecutingAssembly().Location) ?? SystemIcons.Application),
 			Visible = true
 		};
@@ -1784,7 +1784,7 @@ public class Controller
 			bool settingsLight = Prefs.Light;
 			Window w = new Window
 			{
-				Title = "IconBox · 个性化与控制 v1.0.21",
+				Title = "IconBox · 个性化与控制 v1.0.22",
 				Width = Math.Min(940.0, SystemParameters.WorkArea.Width - 40.0),
 				Height = Math.Min(790.0, SystemParameters.WorkArea.Height - 50.0),
 				MinWidth = 560.0,
@@ -2376,77 +2376,6 @@ public class Controller
 				draft.ShowLabels = showLabels;
 				live();
 			});
-			System.Windows.Controls.CheckBox cbComputer = null;
-			System.Windows.Controls.CheckBox cbSettings = null;
-			System.Windows.Controls.CheckBox cbPower = null;
-			System.Windows.Controls.CheckBox cbNetwork = null;
-			// 收纳整合开启时下面四个入口一律收进面板/控制中心，开关本身不再生效：
-			// 置灰而不是「勾着却没反应」，避免被误判成功能没实现。
-			Action updateEntryEnabled = null;
-			func3(stackPanel3, "收纳整合系统入口（此电脑 / 设置 / 电源 / Wi-Fi·蓝牙收进应用面板与控制中心）", draft.Consolidate, (bool consolidate) =>
-			{
-				draft.Consolidate = consolidate;
-				if (consolidate)
-				{
-					// 收纳开启时自动收起各独立入口（运行列表与控制中心保留）
-					if (cbComputer != null && cbComputer.IsChecked == true) cbComputer.IsChecked = false;
-					if (cbSettings != null && cbSettings.IsChecked == true) cbSettings.IsChecked = false;
-					if (cbPower != null && cbPower.IsChecked == true) cbPower.IsChecked = false;
-					if (cbNetwork != null && cbNetwork.IsChecked == true) cbNetwork.IsChecked = false;
-				}
-				live();
-				updateEntryEnabled?.Invoke();
-			});
-			TextBlock consolidateTip = new TextBlock
-			{
-				Text = "开启后自动关闭下方「此电脑 / 设置 / 电源 / Wi-Fi·蓝牙」入口（运行列表与控制中心不受影响）；关闭收纳后各开关可独立开启。",
-				TextWrapping = TextWrapping.Wrap,
-				Foreground = Tokens.LabelSecondary(settingsLight),
-				FontSize = 11.0,
-				Margin = new Thickness(0.0, -4.0, 0.0, 6.0)
-			};
-			stackPanel3.Children.Add(consolidateTip);
-			cbComputer = func3(stackPanel3, "显示此电脑", draft.ShowComputer, (bool showComputer) =>
-			{
-				draft.ShowComputer = showComputer;
-				live();
-			});
-			cbSettings = func3(stackPanel3, "显示设置图标", draft.ShowSettings, (bool showSettings) =>
-			{
-				draft.ShowSettings = showSettings;
-				live();
-			});
-			cbPower = func3(stackPanel3, "显示电源快捷菜单", draft.ShowPower, (bool showPower) =>
-			{
-				draft.ShowPower = showPower;
-				live();
-			});
-			cbNetwork = func3(stackPanel3, "显示 Wi-Fi / 蓝牙快捷菜单", draft.ShowNetwork, (bool showNetwork) =>
-			{
-				draft.ShowNetwork = showNetwork;
-				live();
-			});
-			updateEntryEnabled = delegate
-			{
-				bool folded = draft.Consolidate;
-				if (cbComputer != null)
-				{
-					cbComputer.IsEnabled = !folded;
-				}
-				if (cbSettings != null)
-				{
-					cbSettings.IsEnabled = !folded;
-				}
-				if (cbPower != null)
-				{
-					cbPower.IsEnabled = !folded;
-				}
-				if (cbNetwork != null)
-				{
-					cbNetwork.IsEnabled = !folded;
-				}
-			};
-			updateEntryEnabled();
 			func3(stackPanel3, "显示运行列表入口（正在运行的程序）", draft.ShowRunningList, (bool showRunningList) =>
 			{
 				draft.ShowRunningList = showRunningList;
@@ -4542,25 +4471,9 @@ public class Controller
 	// 系统入口右键菜单"隐藏此入口"：等价于设置页中的入口开关（应用面板不可隐藏）。
 	public void HideSystemEntry(string key)
 	{
-		if (key == DockLayoutRules.Computer)
-		{
-			Prefs.Dock.ShowComputer = false;
-		}
-		else if (key == DockLayoutRules.ControlCenter)
+		if (key == DockLayoutRules.ControlCenter)
 		{
 			Prefs.Dock.ShowControlCenter = false;
-		}
-		else if (key == DockLayoutRules.Power)
-		{
-			Prefs.Dock.ShowPower = false;
-		}
-		else if (key == DockLayoutRules.Network)
-		{
-			Prefs.Dock.ShowNetwork = false;
-		}
-		else if (key == DockLayoutRules.Settings)
-		{
-			Prefs.Dock.ShowSettings = false;
 		}
 		else if (key == DockLayoutRules.RunningList)
 		{
