@@ -820,7 +820,7 @@ public class ControlCenterWindow : GlassWindow
 		Border card = new Border
 		{
 			CornerRadius = new CornerRadius(Math.Max(4.0, innerRadius * 0.8)),
-			Padding = new Thickness(8.0, 5.0, 8.0, 5.0),
+			Padding = new Thickness(8.0, 6.0, 8.0, 6.0),
 			Margin = new Thickness(2.0, 0.0, 2.0, 0.0),
 			Background = System.Windows.Media.Brushes.Transparent,
 			BorderThickness = new Thickness(0.0),
@@ -834,16 +834,16 @@ public class ControlCenterWindow : GlassWindow
 		};
 		ContentControl icon = new ContentControl
 		{
-			Content = IconPacks.Glyph(kind, C.Prefs.Dock.IconPack, C.Prefs.Dock.Accent, TextBrush, 22.0),
+			Content = IconPacks.Glyph(kind, C.Prefs.Dock.IconPack, C.Prefs.Dock.Accent, TextBrush, 24.0),
 			Width = 24.0,
 			Height = 24.0,
 			HorizontalAlignment = System.Windows.HorizontalAlignment.Center,
 			IsHitTestVisible = false
 		};
 		stack.Children.Add(icon);
-		TextBlock name = Label(title, 11.0, FontWeights.Normal, TextBrush);
+		TextBlock name = Label(title, 13.0, FontWeights.SemiBold, TextBrush);
 		name.HorizontalAlignment = System.Windows.HorizontalAlignment.Center;
-		name.Margin = new Thickness(0.0, 4.0, 0.0, 0.0);
+		name.Margin = new Thickness(0.0, 5.0, 0.0, 0.0);
 		stack.Children.Add(name);
 		card.Child = stack;
 		card.MouseEnter += (object s, System.Windows.Input.MouseEventArgs e) =>
