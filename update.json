@@ -1,11 +1,11 @@
 {
-    "version":  "1.0.20",
+    "version":  "1.0.21",
     "released":  "2026-11-09",
-    "notes":  "批量添加去重：扫描时按「快捷方式目标 exe / 文件名主名」比对已添加条目，不再把同一应用的另一份快捷方式当成新图标列出（读取开始菜单的结果从 6 个重复项变为「没有新的入口」）。手动添加也加了同样的兜底。",
-    "installer":  "https://github.com/FlowerSea111222/IconBox/releases/download/v1.0.20/IconBox-Setup-1.0.20.exe",
-    "portable":  "https://github.com/FlowerSea111222/IconBox/releases/download/v1.0.20/IconBox_v1.0.20_User.zip",
+    "notes":  "Dock DIY「显示此电脑」修复：该入口原本被「收纳整合」折叠而永不显示。现在开启收纳整合时四个系统入口开关会自动同步为关闭并置灰（不再出现「勾了却看不到」），关闭收纳整合后此电脑/设置/电源/Wi-Fi 可正常显示。另为 Dock 按钮补上无障碍名称，便于读屏与自动化。",
+    "installer":  "https://github.com/FlowerSea111222/IconBox/releases/download/v1.0.21/IconBox-Setup-1.0.21.exe",
+    "portable":  "https://github.com/FlowerSea111222/IconBox/releases/download/v1.0.21/IconBox_v1.0.21_User.zip",
     "sha256":  {
-                   "installer":  "920191D4F7E43EDB3F57CDB2C403E1D76D8F2F87138DE5283CFECFB3253EBE2B",
-                   "portable":  "103F0F6368BD58A646199F309AD2392111D36124407F7EE7D4BD1F5BF5716DD0"
+                   "installer":  "C8A9F357F64FE76BFCC62FD4CA0BBEB05442D924641AB7454E5686E9105ADE5D",
+                   "portable":  "C2959FD5D16CEF32614C65A0AB12C4B15F140DBBE9FD8E949BA74C9F0AF164E2"
                }
 }
