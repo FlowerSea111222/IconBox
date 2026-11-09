@@ -49,6 +49,58 @@ public static class TaskbarState
 		return FindWindow("Shell_TrayWnd", null);
 	}
 
+	// 任务栏句柄缓存：FindWindow 每次都要走 user32 的窗口表查找，跟随任务栏时每秒调用几十次，
+	// 句柄在 Explorer 不重启时是稳定的。5 秒过期一次，失效时下面再校验一次矩形读取。
+	private static IntPtr cachedTray;
+
+	private static DateTime cachedTrayStamp;
+
+	private static IntPtr HandleCached()
+	{
+		DateTime now = DateTime.UtcNow;
+		if (cachedTray != IntPtr.Zero && (now - cachedTrayStamp).TotalSeconds < 5.0)
+		{
+			return cachedTray;
+		}
+		cachedTray = FindWindow("Shell_TrayWnd", null);
+		cachedTrayStamp = now;
+		return cachedTray;
+	}
+
+	// 一次采样同时给出「任务栏可见高度」与「任务栏所在显示器底边」，
+	// 省掉跟随循环里 VisibleHeight() + ScreenBottomPxFor() 两次重复的 FindWindow/GetMonitorInfo。
+	public static bool Snapshot(out int visiblePx, out int monitorBottomPx)
+	{
+		visiblePx = 0;
+		monitorBottomPx = 0;
+		IntPtr h = HandleCached();
+		if (h == IntPtr.Zero || !IsWindowVisible(h))
+		{
+			return false;
+		}
+		if (!GetWindowRect(h, out RECT r))
+		{
+			cachedTray = IntPtr.Zero;
+			return false;
+		}
+		IntPtr mon = MonitorFromWindow(h, MONITOR_DEFAULTTONEAREST);
+		if (mon == IntPtr.Zero)
+		{
+			return false;
+		}
+		MONITORINFO mi = new MONITORINFO
+		{
+			cbSize = (uint)Marshal.SizeOf(typeof(MONITORINFO))
+		};
+		if (!GetMonitorInfo(mon, ref mi))
+		{
+			return false;
+		}
+		monitorBottomPx = mi.rcMonitor.Bottom;
+		visiblePx = Math.Max(0, Math.Min(r.Bottom, monitorBottomPx) - r.Top);
+		return true;
+	}
+
 	// 主任务栏当前「可见高度」（与 GetWindowRect 同坐标系的像素）。隐藏时≈1~2px，弹出时为完整高度。
 	// 用任务栏矩形与所在显示器矩形的竖直交集衡量——两者都由 user32 在同一 DPI 虚拟化上下文返回，坐标一致。
 	public static int VisibleHeight()
