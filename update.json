@@ -1,11 +1,11 @@
 {
-    "version":  "1.0.19",
+    "version":  "1.0.20",
     "released":  "2026-11-09",
-    "notes":  "性能优化：跟随任务栏改为空闲节流（静止时降频采样，动画仍 60Hz）+ 任务栏句柄/显示器信息缓存合并采样；空闲 CPU 4.38% -> 1.88%（单核）。行为与 1.0.18 一致。",
-    "installer":  "https://github.com/FlowerSea111222/IconBox/releases/download/v1.0.19/IconBox-Setup-1.0.19.exe",
-    "portable":  "https://github.com/FlowerSea111222/IconBox/releases/download/v1.0.19/IconBox_v1.0.19_User.zip",
+    "notes":  "批量添加去重：扫描时按「快捷方式目标 exe / 文件名主名」比对已添加条目，不再把同一应用的另一份快捷方式当成新图标列出（读取开始菜单的结果从 6 个重复项变为「没有新的入口」）。手动添加也加了同样的兜底。",
+    "installer":  "https://github.com/FlowerSea111222/IconBox/releases/download/v1.0.20/IconBox-Setup-1.0.20.exe",
+    "portable":  "https://github.com/FlowerSea111222/IconBox/releases/download/v1.0.20/IconBox_v1.0.20_User.zip",
     "sha256":  {
-                   "installer":  "39D4D8A4DDCE41EBCD8671DA53BF629874146AC9F9BE399885BDCED0D9DF155B",
-                   "portable":  "7DA7B10197B4F6E0A453FFB0CE86DF7F88E5EDC355D3A382F272744685C49F47"
+                   "installer":  "920191D4F7E43EDB3F57CDB2C403E1D76D8F2F87138DE5283CFECFB3253EBE2B",
+                   "portable":  "103F0F6368BD58A646199F309AD2392111D36124407F7EE7D4BD1F5BF5716DD0"
                }
 }
