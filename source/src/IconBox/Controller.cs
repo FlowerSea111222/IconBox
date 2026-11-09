@@ -186,7 +186,7 @@ public class Controller
 		glassSuppressed = Prefs.GameMode || (Prefs.AutoGameMode && FullscreenState.Active());
 		Tray = new NotifyIcon
 		{
-			Text = "IconBox v1.0.19 · 玻璃启动台",
+			Text = "IconBox v1.0.20 · 玻璃启动台",
 			Icon = (Icon.ExtractAssociatedIcon(Assembly.GetExecutingAssembly().Location) ?? SystemIcons.Application),
 			Visible = true
 		};
@@ -897,6 +897,11 @@ public class Controller
 				IsFolder = Directory.Exists(path)
 			};
 			LaunchInfoService.Enrich(entry2);
+			// 手动添加也要挡住「同一应用的不同快捷方式」：扫描列表已按目标 exe 去重，这里是兜底。
+			if (manual && Prefs.Apps.Any((Entry a) => RemovalRules.Same(a, entry2)))
+			{
+				continue;
+			}
 			// 非手动导入（桌面读取）也收录文件夹与文档/媒体文件——桌面文件夹、图片等都能进面板
 			if (manual || ((LaunchInfoService.Primary(entry2) || entry2.IsFolder || DocumentRules.Supported(entry2.Path)) && !RemovalRules.Blocked(Prefs, entry2) && !Prefs.Apps.Any((Entry a) => RemovalRules.Same(a, entry2))))
 			{
@@ -1779,7 +1784,7 @@ public class Controller
 			bool settingsLight = Prefs.Light;
 			Window w = new Window
 			{
-				Title = "IconBox · 个性化与控制 v1.0.19",
+				Title = "IconBox · 个性化与控制 v1.0.20",
 				Width = Math.Min(940.0, SystemParameters.WorkArea.Width - 40.0),
 				Height = Math.Min(790.0, SystemParameters.WorkArea.Height - 50.0),
 				MinWidth = 560.0,
