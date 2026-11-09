@@ -98,6 +98,7 @@ public class DockWindow : GlassWindow
 	// 不必先关掉设置再回来确认（用户反馈「调完看不到效果」）。
 	private bool previewPinned;
 	private DateTime overlayAwaySince = DateTime.MinValue;
+	private bool dockDismissed;
 
 	private bool renderedHidden;
 
@@ -1109,17 +1110,55 @@ public class DockWindow : GlassWindow
 			return;
 		}
 		overlayAwaySince = DateTime.MinValue;
+		dockDismissed = true;
 		Store.Trace("OVERLAY autoclose away");
 		CloseRunningList();
 		C.ControlCenter?.ClosePanel();
+		HideDockWithOverlay();
 
 	}
 
+
+	// 浮层因鼠标离开而收起时，Dock 跟着一起收起：
+	// 用户要的是「浮层和 Dock 一起消失」，而不是浮层没了、Dock 还赖在屏幕上。
+	private void HideDockWithOverlay()
+	{
+		if (!IsVisible) return;
+		dockDismissed = true;
+		double dpi = (followDpi > 0.0) ? followDpi : VisualTreeHelper.GetDpi(this).DpiScaleY;
+		if (dpi <= 0.0) dpi = 1.0;
+		double bottom = dockScreenArea.Bottom;
+		int bottomPx = TaskbarState.ScreenBottomPxFor(new WindowInteropHelper(this).Handle);
+		if (bottomPx > 0) bottom = (double)bottomPx / dpi;
+		if (C.Prefs.Dock.FollowTaskbar)
+		{
+			if (renderedHidden) return;
+			renderedHidden = true;
+			followTargetTop = double.NaN;
+			followHoldUntil = DateTime.MinValue;
+			followMoveTicks = 0L;
+			ApplyZOrder(false);
+			AnimateDockVisibility(hide: true, bottom + 8.0);
+			Store.Trace("DOCK hide with overlay follow");
+			return;
+		}
+		if (!renderedHidden)
+		{
+			renderedHidden = true;
+			AnimateDockVisibility(hide: true, bottom - 20.0);
+			Store.Trace("DOCK hide with overlay hover");
+		}
+	}
 
 	private void UpdateAutoHide()
 	{
 		ReleaseCancelledExternalDrag();
 		UpdateOverlayAutoClose();
+		// 浮层被「移开收起」后 Dock 保持收起，直到鼠标重新回到屏幕底边、重新打开浮层、或进入设置预览。
+		if (dockDismissed && (previewPinned || OverlayOpen() || C.UiBusy || C.Board.IsVisible || CursorInDockBand()))
+		{
+			dockDismissed = false;
+		}
 		// 跟随任务栏模式优先：此时 Dock 的升降完全由任务栏控制，禁用基于悬停的自动隐藏，避免两条逻辑抢 Top。
 		if (C.Prefs.Dock.FollowTaskbar)
 		{
@@ -1136,6 +1175,15 @@ public class DockWindow : GlassWindow
 		}
 		if (!C.GlassSuppressed && source != null && IsVisible)
 		{
+			if (dockDismissed)
+			{
+				if (!renderedHidden)
+				{
+					renderedHidden = true;
+					AnimateDockVisibility(hide: true, dockScreenArea.Bottom - 20.0);
+				}
+				return;
+			}
 			System.Drawing.Point position = System.Windows.Forms.Cursor.Position;
 			System.Windows.Point point = source.CompositionTarget.TransformFromDevice.Transform(new System.Windows.Point(position.X, position.Y));
 			double bottom = dockScreenArea.Bottom;
@@ -1418,6 +1466,11 @@ public class DockWindow : GlassWindow
 			// 设置窗口打开期间 PinForPreview 要求 Dock 常驻：跟随状态机必须尊重它，
 			// 否则 Dock DIY 调参时 Dock 会被本机隐藏（1.0.28 的预览效果会回归消失）。
 			bool wantVisible = previewPinned || taskbarDip > 0.0 || desktopFront || areaFree || nearBottom || (!renderedHidden && nowUtc <= followHoldUntil) || OverlayOpen();
+			// 浮层被鼠标离开而收起时，Dock 也一起收起（直到鼠标回到屏幕底边）。
+			if (dockDismissed && !nearBottom && !previewPinned && !OverlayOpen())
+			{
+				wantVisible = false;
+			}
 			if (!wantVisible)
 			{
 				if (!renderedHidden)
