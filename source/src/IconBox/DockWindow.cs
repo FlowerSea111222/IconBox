@@ -784,36 +784,6 @@ public class DockWindow : GlassWindow
 		{
 			C.Toggle();
 		});
-		if (dock.ShowComputer && !dock.Consolidate)
-		{
-			// 此电脑：直接打开系统官方「此电脑」（explorer shell:MyComputerFolder），
-			// 不做激活/最小化切换，行为与任务栏固定图标一致。
-			AddSystemButton("iconbox://dock/computer", DockButton("computer", null, () =>
-			{
-				C.Board.Hide();
-				Native.Computer();
-			}, "此电脑"), () =>
-			{
-				C.Board.Hide();
-				Native.Computer();
-			});
-			// 回收站：单击打开系统回收站窗口；把文件拖到图标上直接送入回收站（可恢复）
-			AddSystemButton("iconbox://dock/recycle", DockButton("recycle", null, () =>
-			{
-				C.Board.Hide();
-				Process.Start(new ProcessStartInfo("explorer.exe", "shell:RecycleBinFolder")
-				{
-					UseShellExecute = true
-				});
-			}, "回收站"), () =>
-			{
-				C.Board.Hide();
-				Process.Start(new ProcessStartInfo("explorer.exe", "shell:RecycleBinFolder")
-				{
-					UseShellExecute = true
-				});
-			});
-		}
 		if (dock.ShowControlCenter)
 		{
 			// 控制中心：Wi-Fi / 蓝牙 / 音量 / 输出设备 / 亮度，点击在 Dock 上方展开。
@@ -902,17 +872,6 @@ public class DockWindow : GlassWindow
 					C.Toggle(force: true);
 				}, "打开面板，可拖入软件固定"));
 			}
-		}
-		AddQuickButtons();
-		if (dock.ShowSettings && !dock.Consolidate)
-		{
-			AddSystemButton("iconbox://dock/settings", DockButton("⚙", null, () =>
-			{
-				C.Settings();
-			}, "设置"), () =>
-			{
-				C.Settings();
-			});
 		}
 		if (dock.ShowRunningList)
 		{
@@ -1083,13 +1042,16 @@ public class DockWindow : GlassWindow
 		}
 	}
 
-	// 光标是否压在 Dock 本体上（含 8 DIP 余量）。
+	// 光标是否压在 Dock 本体上（按落位位置判定，含 8 DIP 余量）。
+	// 用落位顶 shownTop 而不是当前 Top：升起 / 收起动画期间 Top 还在移动，
+	// 若按实时矩形判定，鼠标明明停在 Dock 落位处也会被判成「已移出」而立刻收起。
 	private bool CursorOverDock()
 	{
 		if (source == null) return false;
 		System.Drawing.Point screenPoint = System.Windows.Forms.Cursor.Position;
 		System.Windows.Point dip = source.CompositionTarget.TransformFromDevice.Transform(new System.Windows.Point(screenPoint.X, screenPoint.Y));
-		return dip.X >= Left - 8.0 && dip.X <= Left + Width + 8.0 && dip.Y >= Top - 8.0 && dip.Y <= Top + Height + 8.0;
+		double restingTop = ((shownTop > 0.0) ? shownTop : Top);
+		return dip.X >= Left - 8.0 && dip.X <= Left + Width + 8.0 && dip.Y >= restingTop - 8.0 && dip.Y <= restingTop + Height + 8.0;
 	}
 
 	// 光标离开 Dock 与浮层一段时间后收起浮层：
@@ -1195,7 +1157,8 @@ public class DockWindow : GlassWindow
 			System.Drawing.Point position = System.Windows.Forms.Cursor.Position;
 			System.Windows.Point point = source.CompositionTarget.TransformFromDevice.Transform(new System.Windows.Point(position.X, position.Y));
 			double bottom = dockScreenArea.Bottom;
-			bool over = !renderedHidden && point.X >= Left && point.X <= Left + Width && point.Y >= shownTop && point.Y <= shownTop + Height;
+			double restingTop = ((shownTop > 0.0) ? shownTop : Top);
+			bool over = !renderedHidden && point.X >= Left - 8.0 && point.X <= Left + Width + 8.0 && point.Y >= restingTop - 8.0 && point.Y <= restingTop + Height + 8.0;
 			bool edge = point.X >= Left - 12.0 && point.X <= Left + Width + 12.0 && point.Y >= bottom - C.Prefs.Dock.EdgeRange;
 			bool flag = (ContextMenu != null && ContextMenu.IsOpen) || Items.Children.OfType<System.Windows.Controls.Button>().Any((System.Windows.Controls.Button b) => b.ContextMenu != null && b.ContextMenu.IsOpen);
 			bool flag2 = hidePolicy.Update(DateTime.UtcNow, C.Prefs.Dock.AutoHide, over, edge, ((dragging || DockInputBusy || externalDockDrag) | flag) || C.UiBusy || C.Board.IsVisible || OverlayOpen(), C.Prefs.Dock.HideDelay);
@@ -1346,7 +1309,14 @@ public class DockWindow : GlassWindow
 				double dpi = ((followDpi > 0.0) ? followDpi : 1.0);
 				double restTop = ((shownTop > 0.0) ? shownTop : (dockScreenArea.Bottom - Height - C.Prefs.DockGap));
 				int pixelX = (int)Math.Round((Left + Width * 0.5) * dpi);
-				int pixelY = (int)Math.Round((restTop + Height * 0.5) * dpi);
+				// 探测点取 Dock 落位矩形的上沿之外：Dock 自身就压在那个矩形里，
+				// 若取矩形中心会命中自己（同进程算「空着」）→ 永远判定空着，Dock 就再也收不起来。
+				double probeTop = restTop - 10.0;
+				if (probeTop < 8.0)
+				{
+					probeTop = restTop + Height * 0.5;
+				}
+				int pixelY = (int)Math.Round(probeTop * dpi);
 				free = DesktopWindowPolicy.PointIsFree(handle, pixelX, pixelY);
 			}
 		}
@@ -1526,7 +1496,9 @@ public class DockWindow : GlassWindow
 				// 可见时按 Dock 实际矩形（含 24 物理像素余量）判定悬停，隐藏时按屏幕底边的高带判定唤出：
 				// 这样从任务栏往上移到 Dock 的整段路都在判定区内，不会中途消失。
 				nearBottom = inDockX && cursorPx.Y >= (renderedHidden ? (bottomPx - bandPx) : (rectTop - 24)) && cursorPx.Y <= bottomPx;
-				cursorOverDock = !renderedHidden && inDockX && cursorPx.Y >= rectTop - 24 && cursorPx.Y <= rectBottom + 24;
+				// 悬停判定同时看「落位矩形」：升起 / 收起动画期间窗口矩形还在移动，
+			// 只看实时 rect 会在动画中途把「鼠标明明压着 Dock」判成已移出，导致刚出来就收起。
+			cursorOverDock = !renderedHidden && (CursorOverDock() || (inDockX && cursorPx.Y >= rectTop - 24 && cursorPx.Y <= rectBottom + 24));
 				// 任务栏彻底隐藏时，「唤出」必须发生在屏幕最底部的一条窄带里（默认 12 DIP），
 				// 否则鼠标只要靠近底部 Dock 就会自己冒出来，与「移到最底部边缘才呼出」不符。
 				if (taskbarGone || (taskbarAutoHide && renderedHidden))
@@ -2692,22 +2664,6 @@ public class DockWindow : GlassWindow
 		menu.Items.Add(movable);
 		menu.Items.Add(spring);
 		menu.Items.Add(automatic);
-		System.Windows.Controls.MenuItem settingsIcon = new System.Windows.Controls.MenuItem
-		{
-			Header = "显示 Dock 设置图标",
-			IsCheckable = true
-		};
-		menu.Opened += (object s, RoutedEventArgs e) =>
-		{
-			settingsIcon.IsChecked = C.Prefs.Dock.ShowSettings;
-		};
-		settingsIcon.Click += (object s, RoutedEventArgs e) =>
-		{
-			C.Prefs.Dock.ShowSettings = settingsIcon.IsChecked;
-			C.Save();
-			Refresh(capture: false);
-		};
-		menu.Items.Add(settingsIcon);
 	}
 
 	private void InitializeBackgroundMove()
@@ -2953,18 +2909,6 @@ public class DockWindow : GlassWindow
 					try
 					{
 						string[] files = (e.Data.GetDataPresent(System.Windows.DataFormats.FileDrop) ? ((string[])e.Data.GetData(System.Windows.DataFormats.FileDrop)) : null);
-						System.Windows.Controls.Button recycle = ((files == null || files.Length == 0) ? null : Items.Children.OfType<System.Windows.Controls.Button>().FirstOrDefault((System.Windows.Controls.Button b) => string.Equals(ItemKey(b), RecycleBin.Clsid, StringComparison.OrdinalIgnoreCase) || string.Equals(ItemKey(b), "iconbox://dock/recycle", StringComparison.OrdinalIgnoreCase)));
-						if (recycle != null)
-						{
-							System.Windows.Point point = e.GetPosition(recycle);
-							if (point.X >= 0.0 && point.Y >= 0.0 && point.X <= recycle.ActualWidth && point.Y <= recycle.ActualHeight)
-							{
-								ClearExternalDockDrag();
-								int deleted = C.DeleteToRecycleBin(files);
-								ShowTaskHint((deleted > 0) ? ("已删除 " + deleted + " 项到回收站") : "未找到可删除的文件");
-								return;
-							}
-						}
 						DockDropTarget target = ExternalDockTarget(e.GetPosition(Items).X);
 						ClearExternalDockDrag();
 						DockPinResult dockPinResult = C.PinDockPaths(array, target);
@@ -3322,17 +3266,6 @@ public class DockWindow : GlassWindow
 			return;
 		}
 		e.Handled = true;
-		System.Windows.Controls.Button recycle = ((!e.Data.GetDataPresent(System.Windows.DataFormats.FileDrop)) ? null : Items.Children.OfType<System.Windows.Controls.Button>().FirstOrDefault((System.Windows.Controls.Button b) => string.Equals(ItemKey(b), RecycleBin.Clsid, StringComparison.OrdinalIgnoreCase) || string.Equals(ItemKey(b), "iconbox://dock/recycle", StringComparison.OrdinalIgnoreCase)));
-		if (recycle != null)
-		{
-			System.Windows.Point point = e.GetPosition(recycle);
-			if (point.X >= 0.0 && point.Y >= 0.0 && point.X <= recycle.ActualWidth && point.Y <= recycle.ActualHeight)
-			{
-				e.Effects = System.Windows.DragDropEffects.Move;
-				ShowTaskHint("松手删除到回收站");
-				return;
-			}
-		}
 		e.Effects = System.Windows.DragDropEffects.Copy;
 		if (!externalDockDrag)
 		{
@@ -3873,12 +3806,7 @@ public class DockWindow : GlassWindow
 		return key switch
 		{
 			"iconbox://dock/apps" => "应用面板",
-			"iconbox://dock/computer" => "此电脑",
-			"iconbox://dock/recycle" => "回收站",
 			"iconbox://dock/control" => "控制中心",
-			"iconbox://dock/settings" => "设置",
-			"iconbox://dock/power" => "电源",
-			"iconbox://dock/network" => "Wi-Fi / 蓝牙",
 			"iconbox://dock/running" => "正在运行的程序",
 			_ => "系统入口"
 		};
@@ -3890,12 +3818,7 @@ public class DockWindow : GlassWindow
 		return key switch
 		{
 			"iconbox://dock/apps" => "apps",
-			"iconbox://dock/computer" => "computer",
-			"iconbox://dock/recycle" => "recycle",
 			"iconbox://dock/control" => "control",
-			"iconbox://dock/settings" => "settings",
-			"iconbox://dock/power" => "power",
-			"iconbox://dock/network" => "wifi",
 			"iconbox://dock/running" => "running",
 			_ => "apps"
 		};
@@ -3962,7 +3885,7 @@ public class DockWindow : GlassWindow
 	internal void CheckMixedPointerReorder()
 	{
 		C.Prefs.Dock.MotionEnabled = false;
-		C.Prefs.Dock.ShowPower = (C.Prefs.Dock.ShowNetwork = (C.Prefs.Dock.ShowComputer = (C.Prefs.Dock.ShowSettings = (C.Prefs.Dock.ShowControlCenter = true))));
+		C.Prefs.Dock.ShowControlCenter = true;
 		taskWheel.Set(running: false);
 		Refresh(capture: false);
 		UpdateLayout();
@@ -4004,21 +3927,7 @@ public class DockWindow : GlassWindow
 				}
 			}
 		}
-		string text2 = string.Join("|", LayoutKeys);
-		C.Prefs.Dock.ShowSettings = false;
-		Refresh(capture: false);
-		if (Items.Children.OfType<System.Windows.Controls.Button>().Any((System.Windows.Controls.Button b) => ItemKey(b) == "iconbox://dock/settings") || ContextMenu == null)
-		{
-			throw new Exception("隐藏设置图标后仍显示，或缺少恢复菜单");
-		}
-		C.Prefs.Dock.ShowSettings = true;
-		Refresh(capture: false);
-		if (string.Join("|", LayoutKeys) != text2)
-		{
-			throw new Exception("重新显示设置图标后丢失位置");
-		}
 	}
-
 	// ==================== 悬浮窗口预览（任务栏式缩略图）====================
 	private void AttachPreview(System.Windows.Controls.Button button, object owner)
 	{
@@ -4871,7 +4780,10 @@ public class DockWindow : GlassWindow
 			return false;
 		}
 		StopDockLayoutMotion();
-		dockPointer = new DockPointerGesture(key, point.X, point.Y, SystemParameters.MinimumHorizontalDragDistance, SystemParameters.MinimumVerticalDragDistance);
+		// 手势的起点用屏幕坐标记录：Dock 升起/收起动画时窗口在光标下方移动，
+		// 窗口相对坐标会「凭空」变化几十像素，把一次普通点击误判成拖拽。
+		System.Windows.Point screenStart = PointToScreen(point);
+		dockPointer = new DockPointerGesture(key, screenStart.X, screenStart.Y, SystemParameters.MinimumHorizontalDragDistance, SystemParameters.MinimumVerticalDragDistance);
 		dockPointerClick = click;
 		dockPointerOwner = owner;
 		dockPointerFromMenu = owner is System.Windows.Controls.MenuItem;
@@ -4891,7 +4803,8 @@ public class DockWindow : GlassWindow
 			return;
 		}
 		bool flag = dockPointer.Dragging;
-		dockPointer.Move(point.X, point.Y);
+		System.Windows.Point screen = PointToScreen(point);
+		dockPointer.Move(screen.X, screen.Y);
 		if (!dockPointer.Dragging)
 		{
 			return;
@@ -4929,7 +4842,8 @@ public class DockWindow : GlassWindow
 			MoveDockPointer(point);
 			DockPointerGesture dockPointerGesture = dockPointer;
 			bool flag = InsideDock(point);
-			DockPointerResult dockPointerResult = dockPointerGesture.Release(point.X, point.Y, flag, flag ? ResolveDockDrop(dockPointerGesture.Source, TranslatePoint(point, Items).X) : null, dockPointerFromMenu | flag);
+			System.Windows.Point screenEnd = PointToScreen(point);
+			DockPointerResult dockPointerResult = dockPointerGesture.Release(screenEnd.X, screenEnd.Y, flag, flag ? ResolveDockDrop(dockPointerGesture.Source, TranslatePoint(point, Items).X) : null, dockPointerFromMenu | flag);
 			Action action = dockPointerClick;
 			ClearDockPointer();
 			bool flag2 = false;
@@ -5260,107 +5174,6 @@ public class DockWindow : GlassWindow
 	[return: MarshalAs(UnmanagedType.U1)]
 	private static extern bool SetSuspendState([MarshalAs(UnmanagedType.U1)] bool hibernate, [MarshalAs(UnmanagedType.U1)] bool force, [MarshalAs(UnmanagedType.U1)] bool disableWake);
 
-	private void AddQuickButtons()
-	{
-		if (C.Prefs.Dock.ShowPower && !C.Prefs.Dock.Consolidate)
-		{
-			AddQuickButton("iconbox://dock/power", "power", "电源", new string[3] { "睡眠", "重启", "关机" }, (int i) =>
-			{
-				Power(i);
-			});
-		}
-		if (!C.Prefs.Dock.ShowNetwork || C.Prefs.Dock.Consolidate)
-		{
-			return;
-		}
-		AddQuickButton("iconbox://dock/network", "wifi", "Wi-Fi / 蓝牙", new string[4] { "控制中心 · Wi-Fi / 蓝牙 / 音量 / 亮度", "Wi-Fi 设置", "蓝牙设置", "网络设置" }, (int i) =>
-		{
-			try
-			{
-				if (i == 0)
-				{
-					C.ToggleControlCenter();
-				}
-				else
-				{
-					Process.Start(new ProcessStartInfo((new string[3] { "ms-settings:network-wifi", "ms-settings:bluetooth", "ms-settings:network" })[i - 1])
-					{
-						UseShellExecute = true
-					});
-				}
-			}
-			catch (Exception ex)
-			{
-				System.Windows.MessageBox.Show(this, ex.Message, "无法打开系统设置");
-			}
-		});
-	}
 
-	private void AddQuickButton(string key, string glyph, string title, string[] names, Action<int> action)
-	{
-		System.Windows.Controls.Button b = DockButton(glyph, null, () =>
-		{
-		}, title);
-		System.Windows.Controls.ContextMenu menu = MenuTheme.Create(C.Prefs.Light, C.Prefs.Dock.Accent, C.Prefs.Dock.Material.Tint, (int)C.Prefs.Dock.OpacityPercent);
-		for (int num = 0; num < names.Length; num++)
-		{
-			int index = num;
-			System.Windows.Controls.MenuItem menuItem = new System.Windows.Controls.MenuItem
-			{
-				Header = names[num]
-			};
-			menuItem.Click += (object s, RoutedEventArgs e) =>
-			{
-				action(index);
-			};
-			menu.Items.Add(menuItem);
-		}
-		b.ContextMenu = menu;
-		TrackMenu(menu);
-		Action open = () =>
-		{
-			menu.PlacementTarget = b;
-			menu.Placement = PlacementMode.Top;
-			menu.IsOpen = true;
-		};
-		b.Click += (object s, RoutedEventArgs e) =>
-		{
-			if (!DockDragSuppresses(b))
-			{
-				open();
-			}
-		};
-		AddSystemButton(key, b, open);
-	}
 
-	private void Power(int action)
-	{
-		string text = (new string[3] { "睡眠", "重启", "关机" })[action];
-		if (System.Windows.MessageBox.Show(this, "确定要" + text + "电脑吗？请先保存正在编辑的内容。", "电源 · " + text, MessageBoxButton.YesNo, MessageBoxImage.Question, MessageBoxResult.No) != MessageBoxResult.Yes)
-		{
-			return;
-		}
-		try
-		{
-			if (action == 0)
-			{
-				if (!SetSuspendState(hibernate: false, force: false, disableWake: false))
-				{
-					throw new Win32Exception(Marshal.GetLastWin32Error());
-				}
-			}
-			else
-			{
-				Process.Start(new ProcessStartInfo("shutdown.exe", (action == 1) ? "/r /t 0" : "/s /t 0")
-				{
-					UseShellExecute = false,
-					CreateNoWindow = true
-				});
-			}
-		}
-		catch (Exception ex)
-		{
-			System.Windows.MessageBox.Show(this, ex.Message, "电源操作失败");
-		}
-	}
 }
