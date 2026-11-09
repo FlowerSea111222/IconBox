@@ -54,17 +54,6 @@ public class DockOptions
 	public int MaxPinned = 9;
 
 	[DataMember]
-	public int ComputerStyle;
-
-	[DataMember]
-	public bool ShowComputer = false;
-
-	// 收纳整合总开关：开启后此电脑/设置/电源/网络入口从 Dock 收起（收进应用面板与控制中心），
-	// 关闭后各独立开关照常生效
-	[DataMember]
-	public bool Consolidate = true;
-
-	[DataMember]
 	public bool ShowLabels;
 
 	[DataMember]
@@ -86,19 +75,10 @@ public class DockOptions
 	public bool SpringReveal = true;
 
 	[DataMember]
-	public bool ShowPower;
-
-	[DataMember]
-	public bool ShowNetwork;
-
-	[DataMember]
 	public bool ShowControlCenter = true;
 
 	[DataMember]
 	public bool ShowRunningList = true;
-
-	[DataMember]
-	public bool ShowSettings = false;
 
 	[DataMember]
 	public List<string> ItemOrder = new List<string>();
@@ -141,14 +121,10 @@ public class DockOptions
 		Alignment = 1;
 		Accent = 0;
 		MaxPinned = 9;
-		ComputerStyle = 0;
-		ShowComputer = false;
-		Consolidate = true;
 		ShowLabels = false;
 		ShowSeparator = true;
 		AlwaysOnTop = false;
 		MotionEnabled = true;
-		ShowSettings = false;
 		ShowControlCenter = true;
 		ShowRunningList = true;
 		IconPack = 4;
@@ -201,26 +177,12 @@ public class DockOptions
 		Accent = Math.Max(0, Math.Min(5, Accent));
 		IconPack = Math.Max(0, Math.Min(IconPacks.Names.Length - 1, IconPack));
 		MaxPinned = Math.Max(3, Math.Min(20, MaxPinned));
-		ComputerStyle = Math.Max(0, Math.Min(1, ComputerStyle));
-		if (Consolidate)
-		{
-			// 收纳整合开启时四类系统入口一律不落在 Dock 上：把持久化开关同步为关闭，
-			// 否则设置里会显示「已勾选但看不到」的状态（被误认为功能没实现）。
-			ShowComputer = false;
-			ShowSettings = false;
-			ShowPower = false;
-			ShowNetwork = false;
-		}
 	}
 
 	public int SystemCount()
 	{
-		if (Consolidate)
-		{
-			// 收纳开启：Dock 上只剩应用面板 + 控制中心 + 运行列表
-			return 1 + (ShowControlCenter ? 1 : 0) + (ShowRunningList ? 1 : 0);
-		}
-		return 1 + (ShowSettings ? 1 : 0) + (ShowComputer ? 1 : 0) + (ShowControlCenter ? 1 : 0) + (ShowPower ? 1 : 0) + (ShowNetwork ? 1 : 0) + (ShowRunningList ? 1 : 0);
+		// Dock 上的系统入口固定为三类：应用面板 + 控制中心 + 运行列表
+		return 1 + (ShowControlCenter ? 1 : 0) + (ShowRunningList ? 1 : 0);
 	}
 
 	public int VisiblePinned(double availableWidth, int count)
