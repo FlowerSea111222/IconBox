@@ -7,7 +7,7 @@
 ; ============================================================================
 
 #define MyAppName "IconBox"
-#define MyAppVersion "1.0.21"
+#define MyAppVersion "1.0.22"
 #define MyAppPublisher "IconBox"
 #define MyAppURL "https://github.com/FlowerSea111222/IconBox"
 #define MyAppExeName "IconBox.exe"
