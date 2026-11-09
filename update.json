@@ -1,11 +1,11 @@
 {
-    "version":  "1.0.21",
+    "version":  "1.0.22",
     "released":  "2026-11-09",
-    "notes":  "Dock DIY「显示此电脑」修复：该入口原本被「收纳整合」折叠而永不显示。现在开启收纳整合时四个系统入口开关会自动同步为关闭并置灰（不再出现「勾了却看不到」），关闭收纳整合后此电脑/设置/电源/Wi-Fi 可正常显示。另为 Dock 按钮补上无障碍名称，便于读屏与自动化。",
-    "installer":  "https://github.com/FlowerSea111222/IconBox/releases/download/v1.0.21/IconBox-Setup-1.0.21.exe",
-    "portable":  "https://github.com/FlowerSea111222/IconBox/releases/download/v1.0.21/IconBox_v1.0.21_User.zip",
+    "notes":  "设置页去掉「此电脑 / 设置 / 电源 / Wi-Fi·蓝牙」四个独立开关与「收纳整合」，四个入口统一收进控制中心（此电脑、回收站、网络、设置、电源、锁屏六项）；Dock 只剩应用面板、控制中心、运行列表三类系统入口。旧版 layout.json 里的遗留字段会被安全忽略并自动清理。另修复「鼠标停在 Dock 上仍会自动收起」：悬停判定改用落位矩形，升落动画期间不再误判为移出。",
+    "installer":  "https://github.com/FlowerSea111222/IconBox/releases/download/v1.0.22/IconBox-Setup-1.0.22.exe",
+    "portable":  "https://github.com/FlowerSea111222/IconBox/releases/download/v1.0.22/IconBox_v1.0.22_User.zip",
     "sha256":  {
-                   "installer":  "C8A9F357F64FE76BFCC62FD4CA0BBEB05442D924641AB7454E5686E9105ADE5D",
-                   "portable":  "C2959FD5D16CEF32614C65A0AB12C4B15F140DBBE9FD8E949BA74C9F0AF164E2"
+                   "installer":  "043ED1A1BAA805133C32F4E28801E4FB4B0B04F7254412C032EF0DCFCF7BBE3D",
+                   "portable":  "296A81E5E0768DF0B0CE265535789300F5F2A1CA0D2FD2764C8A98A667CBD542"
                }
 }
