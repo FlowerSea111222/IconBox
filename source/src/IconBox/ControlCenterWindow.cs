@@ -636,30 +636,43 @@ public class ControlCenterWindow : GlassWindow
 		brightGrid.Children.Add(brightnessValue);
 		body.Children.Add(brightnessSection);
 
-		// 系统快捷行：电源 / 设置 / 锁屏（收纳 Dock 上的电源与设置入口）
+		// 系统快捷行：此电脑 / 回收站 / 网络 / 设置 / 电源 / 锁屏
+		// 这六个入口原本散落在 Dock 上（此电脑、设置、电源、Wi-Fi·蓝牙各占一个按钮），
+		// 现在统一收进控制中心：Dock 只保留应用面板、控制中心与运行列表三类系统入口。
 		sysRow = SectionCard();
-		Grid sysGrid = new Grid();
-		sysGrid.ColumnDefinitions.Add(new ColumnDefinition());
-		sysGrid.ColumnDefinitions.Add(new ColumnDefinition());
-		sysGrid.ColumnDefinitions.Add(new ColumnDefinition());
+		UniformGrid sysGrid = new UniformGrid();
+		sysGrid.Columns = 3;
+		sysGrid.Rows = 2;
 		sysRow.Child = sysGrid;
-		powerCard = SysButton("power", "电源", OpenPowerMenu);
-		Grid.SetColumn(powerCard, 0);
-		sysGrid.Children.Add(powerCard);
-		Border settingsCard = SysButton("settings", "设置", delegate
+		sysGrid.Children.Add(SysButton("computer", "此电脑", delegate
+		{
+			ClosePanel();
+			Native.Computer();
+		}));
+		sysGrid.Children.Add(SysButton("recycle", "回收站", delegate
+		{
+			ClosePanel();
+			Process.Start(new ProcessStartInfo("explorer.exe", "shell:RecycleBinFolder")
+			{
+				UseShellExecute = true
+			});
+		}));
+		sysGrid.Children.Add(SysButton("wifi", "网络", delegate
+		{
+			ShowPage(1);
+		}));
+		sysGrid.Children.Add(SysButton("settings", "设置", delegate
 		{
 			ClosePanel();
 			C.Settings();
-		});
-		Grid.SetColumn(settingsCard, 1);
-		sysGrid.Children.Add(settingsCard);
-		Border lockCard = SysButton("lock", "锁屏", delegate
+		}));
+		powerCard = SysButton("power", "电源", OpenPowerMenu);
+		sysGrid.Children.Add(powerCard);
+		sysGrid.Children.Add(SysButton("lock", "锁屏", delegate
 		{
 			ClosePanel();
 			Native.Lock();
-		});
-		Grid.SetColumn(lockCard, 2);
-		sysGrid.Children.Add(lockCard);
+		}));
 		body.Children.Add(sysRow);
 		return body;
 	}
