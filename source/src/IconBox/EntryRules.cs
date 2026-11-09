@@ -121,10 +121,61 @@ public static class EntryRules
 
 	public static List<string> Candidates(IEnumerable<string> paths, IEnumerable<Entry> existing)
 	{
-		HashSet<string> known = new HashSet<string>(existing.Select((Entry a) => a.Path), StringComparer.OrdinalIgnoreCase);
-		known = new HashSet<string>(known.Select(EntryPathRules.Normalize), StringComparer.OrdinalIgnoreCase);
-		return (from p in paths.Select(EntryPathRules.Normalize)
-			where !string.IsNullOrWhiteSpace(p) && !known.Contains(p)
-			select p).Distinct(StringComparer.OrdinalIgnoreCase).OrderBy(EntryPathRules.Name, StringComparer.CurrentCultureIgnoreCase).ToList();
+		List<Entry> list = (from e in existing ?? Enumerable.Empty<Entry>()
+			where e != null
+			select e).ToList();
+		HashSet<string> knownPaths = new HashSet<string>(from a in list
+			select EntryPathRules.Normalize(a.Path), StringComparer.OrdinalIgnoreCase);
+		HashSet<string> knownTargetPaths = new HashSet<string>(from a in list
+			where !string.IsNullOrWhiteSpace(a.LaunchTarget)
+			select WindowActivationRules.NormalizePath(a.LaunchTarget), StringComparer.OrdinalIgnoreCase);
+		HashSet<string> knownNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+		foreach (Entry item in list)
+		{
+			AddName(knownNames, item.Name);
+			AddName(knownNames, EntryPathRules.Stem(item.Path));
+			AddName(knownNames, EntryPathRules.Stem(item.LaunchTarget));
+		}
+		HashSet<string> knownIdentities = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+		foreach (Entry item2 in list)
+		{
+			AddName(knownIdentities, RemovalRules.Identity(item2));
+		}
+		List<string> list2 = new List<string>();
+		HashSet<string> hashSet = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+		try
+		{
+			foreach (string path in paths)
+			{
+				string text = EntryPathRules.Normalize(path);
+				if (string.IsNullOrWhiteSpace(text) || knownPaths.Contains(text) || !hashSet.Add(text))
+				{
+					continue;
+				}
+				if (knownTargetPaths.Contains(WindowActivationRules.NormalizePath(text)))
+				{
+					continue;
+				}
+				if (ScanDedupRules.AlreadyAdded(text, knownIdentities, knownNames))
+				{
+					continue;
+				}
+				list2.Add(text);
+			}
+		}
+		finally
+		{
+			ScanDedupRules.Release();
+		}
+		list2.Sort((string a, string b) => string.Compare(EntryPathRules.Name(a), EntryPathRules.Name(b), StringComparison.CurrentCultureIgnoreCase));
+		return list2;
+	}
+
+	private static void AddName(HashSet<string> names, string value)
+	{
+		if (!string.IsNullOrWhiteSpace(value))
+		{
+			names.Add(value.Trim());
+		}
 	}
 }
