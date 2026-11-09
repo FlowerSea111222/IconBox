@@ -202,6 +202,15 @@ public class DockOptions
 		IconPack = Math.Max(0, Math.Min(IconPacks.Names.Length - 1, IconPack));
 		MaxPinned = Math.Max(3, Math.Min(20, MaxPinned));
 		ComputerStyle = Math.Max(0, Math.Min(1, ComputerStyle));
+		if (Consolidate)
+		{
+			// 收纳整合开启时四类系统入口一律不落在 Dock 上：把持久化开关同步为关闭，
+			// 否则设置里会显示「已勾选但看不到」的状态（被误认为功能没实现）。
+			ShowComputer = false;
+			ShowSettings = false;
+			ShowPower = false;
+			ShowNetwork = false;
+		}
 	}
 
 	public int SystemCount()
