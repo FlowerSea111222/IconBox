@@ -1,11 +1,11 @@
 {
-  "version": "1.0.17",
+  "version": "1.0.18",
   "released": "2026-11-09",
-  "notes": "最大化窗口（如浏览器、WPS）前台时，Dock 不再被误判为「全屏游戏」而整体隐藏：开启任务栏自动隐藏时，Dock 随任务栏一起弹出、一起收起，不会单独冒出来；开启彻底隐藏任务栏时，只有鼠标压到屏幕最底边才唤出 Dock。",
-  "installer": "https://github.com/FlowerSea111222/IconBox/releases/download/v1.0.17/IconBox-Setup-1.0.17.exe",
-  "portable": "https://github.com/FlowerSea111222/IconBox/releases/download/v1.0.17/IconBox_v1.0.17_User.zip",
+  "notes": "修复最大化窗口（浏览器、WPS 等）前台时 Dock 完全不出现的问题：最大化窗口不再被误判为全屏应用。开启任务栏自动隐藏时，Dock 随任务栏一起弹出、一起收起，不会单独冒出来；开启彻底隐藏任务栏时，鼠标压到屏幕最底边才唤出 Dock。同时修正真正全屏（游戏/视频）时 Dock 可能停在屏幕上不收回的问题。",
+  "installer": "https://github.com/FlowerSea111222/IconBox/releases/download/v1.0.18/IconBox-Setup-1.0.18.exe",
+  "portable": "https://github.com/FlowerSea111222/IconBox/releases/download/v1.0.18/IconBox_v1.0.18_User.zip",
   "sha256": {
-    "installer": "8623432DA49F331251EAE8AC5783EB989785E568CB1FD622066A63C4D2983965",
-    "portable": "6815C71D476C045938C21A150C96A2EAEB1DDDA1486B83EF524A5E2C82D682DC"
+    "installer": "AC19A5BFB984814222F718B78FB20AD28B8C8D9E4E213C7B4607DB61ACB02B35",
+    "portable": "DF289059500298611E36275AF9AA6A0042B92F0D85ECF28379573192B8FCE91D"
   }
 }
