@@ -186,7 +186,7 @@ public class Controller
 		glassSuppressed = Prefs.GameMode || (Prefs.AutoGameMode && FullscreenState.Active());
 		Tray = new NotifyIcon
 		{
-			Text = "IconBox v1.0.20 · 玻璃启动台",
+			Text = "IconBox v1.0.21 · 玻璃启动台",
 			Icon = (Icon.ExtractAssociatedIcon(Assembly.GetExecutingAssembly().Location) ?? SystemIcons.Application),
 			Visible = true
 		};
@@ -1784,7 +1784,7 @@ public class Controller
 			bool settingsLight = Prefs.Light;
 			Window w = new Window
 			{
-				Title = "IconBox · 个性化与控制 v1.0.20",
+				Title = "IconBox · 个性化与控制 v1.0.21",
 				Width = Math.Min(940.0, SystemParameters.WorkArea.Width - 40.0),
 				Height = Math.Min(790.0, SystemParameters.WorkArea.Height - 50.0),
 				MinWidth = 560.0,
@@ -2380,6 +2380,9 @@ public class Controller
 			System.Windows.Controls.CheckBox cbSettings = null;
 			System.Windows.Controls.CheckBox cbPower = null;
 			System.Windows.Controls.CheckBox cbNetwork = null;
+			// 收纳整合开启时下面四个入口一律收进面板/控制中心，开关本身不再生效：
+			// 置灰而不是「勾着却没反应」，避免被误判成功能没实现。
+			Action updateEntryEnabled = null;
 			func3(stackPanel3, "收纳整合系统入口（此电脑 / 设置 / 电源 / Wi-Fi·蓝牙收进应用面板与控制中心）", draft.Consolidate, (bool consolidate) =>
 			{
 				draft.Consolidate = consolidate;
@@ -2392,6 +2395,7 @@ public class Controller
 					if (cbNetwork != null && cbNetwork.IsChecked == true) cbNetwork.IsChecked = false;
 				}
 				live();
+				updateEntryEnabled?.Invoke();
 			});
 			TextBlock consolidateTip = new TextBlock
 			{
@@ -2422,6 +2426,27 @@ public class Controller
 				draft.ShowNetwork = showNetwork;
 				live();
 			});
+			updateEntryEnabled = delegate
+			{
+				bool folded = draft.Consolidate;
+				if (cbComputer != null)
+				{
+					cbComputer.IsEnabled = !folded;
+				}
+				if (cbSettings != null)
+				{
+					cbSettings.IsEnabled = !folded;
+				}
+				if (cbPower != null)
+				{
+					cbPower.IsEnabled = !folded;
+				}
+				if (cbNetwork != null)
+				{
+					cbNetwork.IsEnabled = !folded;
+				}
+			};
+			updateEntryEnabled();
 			func3(stackPanel3, "显示运行列表入口（正在运行的程序）", draft.ShowRunningList, (bool showRunningList) =>
 			{
 				draft.ShowRunningList = showRunningList;
