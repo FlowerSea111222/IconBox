@@ -1420,8 +1420,24 @@ public class DockWindow : GlassWindow
 
 	private void UpdateFollowTaskbar(double frameDelta)
 	{
-		if (!C.Prefs.Dock.FollowTaskbar || source == null || !IsVisible || dragging || (C.GlassSuppressed && !SuppressionOverridden()))
+		if (!C.Prefs.Dock.FollowTaskbar || source == null || !IsVisible || dragging)
 		{
+			return;
+		}
+		if (C.GlassSuppressed && !SuppressionOverridden())
+		{
+			// 真正的全屏应用（游戏/视频）前台时必须让路，但也不能让 Dock 停在屏幕上不动。
+			if (!renderedHidden)
+			{
+				renderedHidden = true;
+				followTargetTop = double.NaN;
+				followOnTop = false;
+				followZOrderApplied = false;
+				followMoveTicks = 0L;
+				ApplyZOrder(false);
+				AnimateDockVisibility(hide: true, dockScreenArea.Bottom + 8.0);
+				Store.Trace("DOCK follow hide reason=fullscreen");
+			}
 			return;
 		}
 		try
