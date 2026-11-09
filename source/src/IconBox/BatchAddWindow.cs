@@ -333,6 +333,7 @@ public class BatchAddWindow : Window
 
 	private void Merge(IEnumerable<string> paths)
 	{
+		int added = 0;
 		HashSet<string> hashSet = new HashSet<string>(candidates.Select((AddCandidate c) => c.Path), StringComparer.OrdinalIgnoreCase);
 		foreach (string item in EntryRules.Candidates(paths, C.Prefs.Apps))
 		{
@@ -352,9 +353,14 @@ public class BatchAddWindow : Window
 				}
 			};
 			candidates.Add(addCandidate);
+			added++;
 		}
 		candidates.Sort((AddCandidate a, AddCandidate b) => StringComparer.CurrentCultureIgnoreCase.Compare(a.Name, b.Name));
 		ApplyFilter();
+		if (added == 0)
+		{
+			status.Text = "没有新的入口 · 已经添加过的会自动跳过";
+		}
 	}
 
 	private void PickFiles()
