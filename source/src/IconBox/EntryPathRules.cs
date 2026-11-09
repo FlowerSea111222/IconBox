@@ -20,6 +20,23 @@ public static class EntryPathRules
 		return pathRoot;
 	}
 
+	/// <summary>路径的文件主名（不含扩展名），用于扫描去重时按名称比对。</summary>
+	public static string Stem(string path)
+	{
+		if (string.IsNullOrWhiteSpace(path))
+		{
+			return "";
+		}
+		try
+		{
+			return Path.GetFileNameWithoutExtension(path) ?? "";
+		}
+		catch
+		{
+			return "";
+		}
+	}
+
 	public static string Name(string path)
 	{
 		if (!Directory.Exists(path))
