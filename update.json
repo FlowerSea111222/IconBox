@@ -1,11 +1,11 @@
 {
-  "version": "1.0.15",
-  "released": "2026-11-08",
-  "notes": "鼠标停在控制中心或托盘界面上时，Dock 不再误收起，来得及点图标；控制中心与托盘界面互斥，同一时刻只保留一个；浮层在鼠标移开后自动收起，不再残留。",
-  "installer": "https://github.com/FlowerSea111222/IconBox/releases/download/v1.0.15/IconBox-Setup-1.0.15.exe",
-  "portable": "https://github.com/FlowerSea111222/IconBox/releases/download/v1.0.15/IconBox_v1.0.15_User.zip",
+  "version": "1.0.16",
+  "released": "2026-11-09",
+  "notes": "鼠标离开控制中心或托盘界面后，浮层与 Dock 栏同时收起，不再出现浮层没了、Dock 还留在屏幕上的情况；把鼠标移回屏幕底边即可再次唤出 Dock。",
+  "installer": "https://github.com/FlowerSea111222/IconBox/releases/download/v1.0.16/IconBox-Setup-1.0.16.exe",
+  "portable": "https://github.com/FlowerSea111222/IconBox/releases/download/v1.0.16/IconBox_v1.0.16_User.zip",
   "sha256": {
-    "installer": "C0C8F69D5A2AE117DE562C2A89415D3E257A5992B8CBB7524C03F4458762B754",
-    "portable": "730B66CB2EFDA047958500FB63D39E26040C6DED4423F2F1488C20FAB94148D3"
+    "installer": "BCF1E33D6E837D042A6AF4BEBB815234576ECAF1B9D3285BC46785CD18199C22",
+    "portable": "E4A304E54AAD509629B966C42BBAE75CD27309B6D2ACDD07C1265AF98D3576EC"
   }
 }
