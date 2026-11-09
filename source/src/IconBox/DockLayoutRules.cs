@@ -8,19 +8,11 @@ public static class DockLayoutRules
 {
 	public const string Apps = "iconbox://dock/apps";
 
-	public const string Computer = "iconbox://dock/computer";
-
 	public const string ControlCenter = "iconbox://dock/control";
-
-	public const string Power = "iconbox://dock/power";
-
-	public const string Network = "iconbox://dock/network";
 
 	public const string RunningList = "iconbox://dock/running";
 
-	public const string Settings = "iconbox://dock/settings";
-
-	public static readonly string[] SystemKeys = new string[7] { "iconbox://dock/apps", "iconbox://dock/computer", "iconbox://dock/control", "iconbox://dock/power", "iconbox://dock/network", "iconbox://dock/settings", "iconbox://dock/running" };
+	public static readonly string[] SystemKeys = new string[3] { "iconbox://dock/apps", "iconbox://dock/control", "iconbox://dock/running" };
 
 	// 迁移：旧版（GlassBoard）把 Dock 项写成 glassboard:// 前缀，读数时统一改写为新前缀。
 	private static string Current(string key)
@@ -39,23 +31,14 @@ public static class DockLayoutRules
 
 	public static bool Visible(DockOptions o, string key)
 	{
-		// 收纳整合开启时，此电脑/设置/电源/网络一律不显示在 Dock 上
+		// 此电脑 / 设置 / 电源 / 网络已并入控制中心，Dock 上只剩应用面板、控制中心与运行列表
 		key = Current(key);
-		bool folded = o.Consolidate;
 		switch (key)
 		{
-		case "iconbox://dock/network":
-			return !folded && o.ShowNetwork;
-		case "iconbox://dock/power":
-			return !folded && o.ShowPower;
 		case "iconbox://dock/control":
 			return o.ShowControlCenter;
-		case "iconbox://dock/computer":
-			return !folded && o.ShowComputer;
 		case "iconbox://dock/running":
 			return o.ShowRunningList;
-		case "iconbox://dock/settings":
-			return !folded && o.ShowSettings;
 		default:
 			return true;
 		}
@@ -67,8 +50,8 @@ public static class DockLayoutRules
 		List<string> list = (saved ?? new string[0]).Select(Current).Where((string k) => k != null && allowed.Contains(k)).Distinct(StringComparer.OrdinalIgnoreCase).ToList();
 		if (list.Count == 0)
 		{
-			// 设置图标排在控制中心/运行列表之前，避免 Dock 溢出时被收进"更多"
-			return new string[2] { "iconbox://dock/apps", "iconbox://dock/computer" }.Concat(apps).Concat(new string[5] { "iconbox://dock/power", "iconbox://dock/network", "iconbox://dock/settings", "iconbox://dock/control", "iconbox://dock/running" }).ToList();
+			// 控制中心排在运行列表之前，避免 Dock 溢出时被收进"更多"
+			return new string[1] { "iconbox://dock/apps" }.Concat(apps).Concat(new string[2] { "iconbox://dock/control", "iconbox://dock/running" }).ToList();
 		}
 		string[] systemKeys = SystemKeys;
 		foreach (string text in systemKeys)
@@ -85,7 +68,7 @@ public static class DockLayoutRules
 				int num2 = list.FindLastIndex((string k) => !SystemItem(k));
 				if (num2 < 0)
 				{
-					num2 = list.IndexOf("iconbox://dock/computer");
+					num2 = list.IndexOf("iconbox://dock/control");
 				}
 				list.Insert((num2 < 0) ? list.Count : (num2 + 1), app);
 			}
