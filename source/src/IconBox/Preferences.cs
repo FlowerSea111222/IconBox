@@ -22,7 +22,7 @@ public class Preferences
 	public bool Light;
 
 	[DataMember]
-	public double DockGap = 12.0;
+	public double DockGap = 10.0;
 
 	[DataMember]
 	public bool Imported;
@@ -259,7 +259,7 @@ public class Preferences
 		DockOrderRules.Normalize(this);
 		BoardIconSize = LayoutRules.Clamp(BoardIconSize, 28.0, 80.0, 48.0);
 		BoardIconGap = LayoutRules.Clamp(BoardIconGap, 0.0, 20.0, 5.0);
-		DockGap = LayoutRules.Clamp(DockGap, 0.0, 160.0, 12.0);
+		DockGap = LayoutRules.Clamp(DockGap, 0.0, 160.0, 10.0);
 		PanelSize = Math.Max(0, Math.Min(2, PanelSize));
 		OpacityPercent = LayoutRules.GlassOpacity(OpacityPercent ?? 72.0);
 		if (Removed == null)
