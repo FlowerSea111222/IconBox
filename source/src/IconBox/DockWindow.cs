@@ -114,7 +114,7 @@ public class DockWindow : GlassWindow
 	private double followTargetTop = double.NaN;
 	private DateTime followTickUtc;
 
-	// Dock 在跟随模式下的可见性保持时间：任务栏收起/鼠标离开底边后仍然多留 1.2 秒，
+	// Dock 在跟随模式下的可见性保持时间：任务栏收起/鼠标离开底边后仍然多留 0.9 秒，
 	// 否则「任务栏一收起 Dock 立刻消失」，鼠标还没来得及移上去点图标。
 	private DateTime followHoldUntil;
 	private string followShowReason = "init";
@@ -129,6 +129,8 @@ public class DockWindow : GlassWindow
 	private DateTime followBusyUntil;
 
 	private IntPtr dockHandle;
+	private DateTime dockBlockStamp;
+	private bool dockBlockCached;
 
 
 	private double shownTop;
@@ -1328,6 +1330,41 @@ public class DockWindow : GlassWindow
 		return free;
 	}
 
+	private bool DockAreaBlocked()
+	{
+		DateTime now = DateTime.UtcNow;
+		if ((now - dockBlockStamp).TotalMilliseconds < 200.0)
+		{
+			return dockBlockCached;
+		}
+		dockBlockStamp = now;
+		bool blocked = false;
+		try
+		{
+			IntPtr handle = dockHandle;
+			if (handle != IntPtr.Zero)
+			{
+				double dpi = ((followDpi > 0.0) ? followDpi : 1.0);
+				double restTop = ((shownTop > 0.0) ? shownTop : (dockScreenArea.Bottom - Height - C.Prefs.DockGap));
+				int pixelX = (int)Math.Round((Left + Width * 0.5) * dpi);
+				// 探测点取落位矩形上沿之外：Dock 自己压在那里，取中心会命中自己。
+				double probeTop = restTop - 10.0;
+				if (probeTop < 8.0)
+				{
+					probeTop = restTop + Height * 0.5;
+				}
+				int pixelY = (int)Math.Round(probeTop * dpi);
+				blocked = !DesktopWindowPolicy.PointIsFree(handle, pixelX, pixelY);
+			}
+		}
+		catch (Exception ex)
+		{
+			Store.Log(ex);
+		}
+		dockBlockCached = blocked;
+		return blocked;
+	}
+
 	private void DetachFollowFrames()
 	{
 		if (followFramesHooked)
@@ -1369,38 +1406,6 @@ public class DockWindow : GlassWindow
 		UpdateFollowTaskbar(frameDelta);
 	}
 
-	// 最大化（而不是真正的全屏）窗口会让 FullscreenState 误判为全屏，整条跟随链路被
-	// glassSuppressed 挡掉，表现为「任务栏弹出来了，Dock 却不跟着出来」。这里只认两个
-	// 明确的用户意图信号：自动隐藏模式下任务栏已经被唤出；彻底隐藏模式下光标压在底边。
-	private bool SuppressionOverridden()
-	{
-		if (!C.GlassSuppressed || C.Prefs.GameMode || source == null)
-		{
-			return false;
-		}
-		System.Drawing.Point position = System.Windows.Forms.Cursor.Position;
-		IntPtr handle = dockHandle;
-		if (C.Prefs.HideTaskbar)
-		{
-			double num = ((followDpi > 0.0) ? followDpi : VisualTreeHelper.GetDpi(this).DpiScaleY);
-			if (num <= 0.0)
-			{
-				num = 1.0;
-			}
-			int num2 = TaskbarState.ScreenBottomPxFor(handle);
-			if (num2 <= 0)
-			{
-				num2 = (int)Math.Round(dockScreenArea.Bottom * num);
-			}
-			int num3 = (int)Math.Round(Math.Max(6.0, Math.Min(C.Prefs.Dock.EdgeRange, 48.0)) * num);
-			return position.Y >= num2 - num3;
-		}
-		if (!C.Prefs.AutoHideTaskbar)
-		{
-			return false;
-		}
-		return TaskbarState.VisibleHeight() >= 8.0;
-	}
 
 
 	private void UpdateFollowTaskbar(double frameDelta)
@@ -1409,9 +1414,15 @@ public class DockWindow : GlassWindow
 		{
 			return;
 		}
-		if (C.GlassSuppressed && !SuppressionOverridden())
+		ForegroundKind front = ForegroundRules.Classify(
+			(int)Math.Round(dockScreenArea.Left),
+			(int)Math.Round(dockScreenArea.Top),
+			(int)Math.Round(dockScreenArea.Right),
+			(int)Math.Round(dockScreenArea.Bottom));
+		// 真全屏（游戏 / 视频 / 浏览器 F11）与系统浮层（通知中心、快速设置、任务视图）一律让路：
+		// 问卷 3.4 与 Q13.3 要求这些场景 Dock 彻底不出现；设置预览与启动台面板打开时例外。
+		if ((front == ForegroundKind.Fullscreen || front == ForegroundKind.SystemOverlay) && !previewPinned && !C.Board.IsVisible)
 		{
-			// 真正的全屏应用（游戏/视频）前台时必须让路，但也不能让 Dock 停在屏幕上不动。
 			if (!renderedHidden)
 			{
 				renderedHidden = true;
@@ -1421,7 +1432,7 @@ public class DockWindow : GlassWindow
 				followMoveTicks = 0L;
 				ApplyZOrder(false);
 				AnimateDockVisibility(hide: true, dockScreenArea.Bottom + 8.0);
-				Store.Trace("DOCK follow hide reason=fullscreen");
+				Store.Trace((front == ForegroundKind.Fullscreen) ? "DOCK follow hide reason=fullscreen" : "DOCK follow hide reason=overlay");
 			}
 			return;
 		}
@@ -1491,7 +1502,7 @@ public class DockWindow : GlassWindow
 					rectBottom = bodyRect.Bottom;
 				}
 				int bottomPx = ((num > 0) ? num : (int)Math.Round(screenBottom * dpi));
-				int bandPx = (int)Math.Round(Math.Max(C.Prefs.Dock.EdgeRange, Height) * dpi);
+				int bandPx = (int)Math.Round(Math.Max(6.0, Math.Min(C.Prefs.Dock.EdgeRange, 40.0)) * dpi);
 				bool inDockX = cursorPx.X >= rectLeft - 24 && cursorPx.X <= rectRight + 24;
 				// 可见时按 Dock 实际矩形（含 24 物理像素余量）判定悬停，隐藏时按屏幕底边的高带判定唤出：
 				// 这样从任务栏往上移到 Dock 的整段路都在判定区内，不会中途消失。
@@ -1532,40 +1543,57 @@ public class DockWindow : GlassWindow
 					areaFree = DockAreaFree();
 				}
 			}
-			// 可见性分三种模式，优先级从高到低：
-			//   A 彻底隐藏任务栏：没有任务栏可跟随，Dock 只在鼠标触到屏幕最底部边缘时唤出；
-			//   B 自动隐藏任务栏且前台是应用窗口（最大化的浏览器等）：Dock 与任务栏同进同退，
-			//     只由「任务栏已经露出」触发，绝不被底边悬停或空白落位单独唤起；
-			//   C 其余情况（任务栏常显、或桌面在前台）：沿用常驻策略。
-			bool wantVisible;
-			if (taskbarGone)
+			// 可见性按「前台窗口类型 × 任务栏状态」决策（问卷 3.1 / 3.2 / 3.3 / 3.4）：
+			//   桌面     → 任何任务栏状态都常驻；
+			//   最大化   → T1 不显示；T2 与任务栏同帧同步；T3 压底边出现、移出后消失；
+			//   普通窗口 → T1/T3 常驻、T2 跟随任务栏，但都不许压住窗口内容（Q3.3 / Q6.4）；
+			//   全屏 / 系统浮层 → 进入本方法时已经直接收起。
+			bool overlayOpen = OverlayOpen();
+			bool boardPinned = previewPinned || C.Board.IsVisible;
+			bool hot = overlayOpen || boardPinned || cursorOverDock || nearBottom;
+			bool held = !renderedHidden && nowUtc <= followHoldUntil;
+			bool taskbarRevealed = taskbarDip > 0.0;
+			if (hot || taskbarRevealed)
 			{
-				wantVisible = previewPinned || nearBottom || cursorOverDock || OverlayOpen();
+				followHoldUntil = nowUtc.AddSeconds(0.9);
+				followShowReason = (taskbarRevealed ? "taskbar" : (cursorOverDock ? "dock" : (overlayOpen ? "overlay" : "hover")));
 			}
-			else if (taskbarAutoHide && !desktopFront)
+			bool wantVisible;
+			if (front == ForegroundKind.Desktop)
 			{
-				if (taskbarDip > 0.0 || cursorOverDock || OverlayOpen() || previewPinned)
+				// 桌面：常驻显示，任务栏收起也一直留着（Q4.8）。
+				wantVisible = true;
+			}
+			else if (front == ForegroundKind.Maximized)
+			{
+				if (taskbarGone)
 				{
-					followHoldUntil = nowUtc.AddSeconds(1.2);
-					followShowReason = ((taskbarDip > 0.0) ? "taskbar" : "dock");
+					// 彻底隐藏任务栏：鼠标压底边出现，移出 Dock 范围后消失（3.1 T3）。
+					wantVisible = hot;
 				}
-				// 任务栏收起后仍保留 1.2 秒，并在鼠标停在 Dock 上时一直保持，
-				// 方便从任务栏往上移到 Dock 上点图标（不能因为任务栏收了就半路消失）。
-				wantVisible = previewPinned || taskbarDip > 0.0 || OverlayOpen() || cursorOverDock || (!renderedHidden && nowUtc <= followHoldUntil);
+				else if (taskbarAutoHide)
+				{
+					// 自动隐藏任务栏：同一帧跟着任务栏出现；任务栏收起后保留 900ms（3.1 T2、Q5.1）。
+					wantVisible = hot || taskbarRevealed || held;
+				}
+				else
+				{
+					// 任务栏常显：最大化窗口已经贴住屏幕底部，Dock 不再出现（3.1 T1）。
+					wantVisible = overlayOpen || boardPinned || cursorOverDock;
+				}
 			}
 			else
 			{
-				if (taskbarDip > 0.0 || desktopFront || areaFree || nearBottom)
+				// 普通窗口：T1/T3 常驻，T2 跟随任务栏（3.3）。
+				wantVisible = ((!taskbarAutoHide || taskbarGone) ? true : (hot || taskbarRevealed || held));
+				// 常驻也不许压在窗口内容上：落位被别的窗口占住时让开（3.3 / Q6.4 / Q6.5）。
+				if (wantVisible && !cursorOverDock && !overlayOpen && !boardPinned && DockAreaBlocked())
 				{
-					followHoldUntil = nowUtc.AddSeconds(1.2);
-					followShowReason = ((taskbarDip > 0.0) ? "taskbar" : (desktopFront ? "desktop" : (areaFree ? "free" : "hover")));
+					wantVisible = false;
 				}
-				// 设置窗口打开期间 PinForPreview 要求 Dock 常驻：跟随状态机必须尊重它，
-				// 否则 Dock DIY 调参时 Dock 会被本机隐藏（预览效果会回归消失）。
-				wantVisible = previewPinned || taskbarDip > 0.0 || desktopFront || areaFree || nearBottom || (!renderedHidden && nowUtc <= followHoldUntil) || OverlayOpen();
 			}
 			// 浮层被鼠标离开而收起时，Dock 也一起收起（直到鼠标回到屏幕底边）。
-			if (dockDismissed && !nearBottom && !cursorOverDock && !previewPinned && !OverlayOpen())
+			if (dockDismissed && !nearBottom && !cursorOverDock && !previewPinned && !overlayOpen)
 			{
 				wantVisible = false;
 			}
@@ -1585,13 +1613,16 @@ public class DockWindow : GlassWindow
 			if (renderedHidden)
 			{
 				renderedHidden = false;
+				// 一旦真的重新显示，「被浮层带走的收起」就结束了；
+				// 否则跟随模式下 UpdateAutoHide 不再运行，dockDismissed 会一直挂着让 Dock 永远出不来。
+				dockDismissed = false;
 				followOnTop = false;
 				followZOrderApplied = false;
 				followTargetTop = target;
 				shownTop = target;
 				settledTop = target;
 				followMoveTicks = 0L;
-				followHoldUntil = nowUtc.AddSeconds(1.2);
+				followHoldUntil = nowUtc.AddSeconds(0.9);
 				// 从屏幕外起步，交给下面的指数平滑抬上来（约 200ms），不做瞬间跳位。
 				BeginAnimation(Window.TopProperty, null);
 				Top = screenBottom + 8.0;
@@ -1601,7 +1632,17 @@ public class DockWindow : GlassWindow
 			// 与自动隐藏的任务栏一起露出（此时 Dock 压在最大化窗口上，不置顶就点不到）、
 			// 用户开了「始终置顶」、或设置里正在做 Dock 预览。其余时刻一律压到最底，
 			// 保证 Dock 静止时不会盖在其它软件界面上。
-			ApplyZOrder(nearBottom || cursorOverDock || (taskbarAutoHide && !taskbarGone && taskbarDip > 0.0) || C.Prefs.Dock.AlwaysOnTop || previewPinned);
+			ApplyZOrder(previewPinned || cursorOverDock || nearBottom || overlayOpen || (front == ForegroundKind.Maximized && !taskbarGone && taskbarRevealed) || C.Prefs.Dock.AlwaysOnTop);
+			// Q5.6 / Q13.2：鼠标已经停在 Dock 上时，自动隐藏的任务栏收起不能把 Dock 一起拽下去，
+			// 否则用户「手还没点到图标，Dock 就自动下落了」。此时保持当前落点不动，
+			// 只维持置顶与保持计时；等鼠标真的离开 Dock 再恢复跟随。
+			if (!renderedHidden && (cursorOverDock || overlayOpen || boardPinned) && !double.IsNaN(followTargetTop) && Math.Abs(Top - followTargetTop) < 1.0)
+			{
+				followTargetTop = Math.Round(Top * dpi) / dpi;
+				shownTop = followTargetTop;
+				settledTop = followTargetTop;
+				return;
+			}
 			// 帧间隔优先取合成帧时间戳（CompositionTarget.Rendering 自带），比 DateTime.UtcNow 稳定；
 			// 定时调用（Refresh/开关切换）时没有帧时间戳，退回墙钟差值。
 			double num2 = frameDelta;
@@ -2851,7 +2892,7 @@ public class DockWindow : GlassWindow
 			BeginAnimation(Window.TopProperty, doubleAnimationUsingKeyFrames, HandoffBehavior.SnapshotAndReplace);
 			return;
 		}
-		DoubleAnimation doubleAnimation = new DoubleAnimation(top, target, TimeSpan.FromMilliseconds(hide ? 160 : 190))
+		DoubleAnimation doubleAnimation = new DoubleAnimation(top, target, TimeSpan.FromMilliseconds(200.0))
 		{
 			EasingFunction = new CubicEase
 			{
