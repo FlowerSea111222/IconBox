@@ -1,11 +1,11 @@
 {
-    "version":  "1.0.23",
-    "released":  "2026-11-09",
-    "notes":  "控制中心的六个系统快捷（此电脑、回收站、网络、设置、电源、锁屏）图标与面板内其他图标统一：回收站改为标准垃圾桶图形（原为断裂的回收箭头多边形）、设置改用齿轮图形（原「圆+八条短线」看起来像太阳，与亮度图标撞脸）、图标统一 24px 线框 + 1.7 描边、文字统一 13 号 SemiBold，与 Wi-Fi/蓝牙等卡片同一节奏。",
-    "installer":  "https://github.com/FlowerSea111222/IconBox/releases/download/v1.0.23/IconBox-Setup-1.0.23.exe",
-    "portable":  "https://github.com/FlowerSea111222/IconBox/releases/download/v1.0.23/IconBox_v1.0.23_User.zip",
-    "sha256":  {
-                   "installer":  "E27D76663A13502AEB74EA0BAD3471DCAE113D9DD9805C6399199DC20A542A18",
-                   "portable":  "F8E56B2D0947FE04F83317E3467B483629DF5969E9D170348A2DA7FF9A2CDB35"
-               }
+  "version": "1.0.24",
+  "released": "2026-11-10",
+  "notes": "1) 按问卷重写 Dock 与任务栏的联动：最大化窗口下与任务栏同帧出现、同时消失，鼠标停在 Dock 上不再被任务栏收回带走；2) 桌面常驻、真全屏与任务视图自动让开、普通窗口不遮挡；3) 悬停收起统一 900ms；4) 点 Dock 上已在前台的应用不再最小化它；5) DockGap 默认 10。",
+  "installer": "https://github.com/FlowerSea111222/IconBox/releases/download/v1.0.24/IconBox-Setup-1.0.24.exe",
+  "portable": "https://github.com/FlowerSea111222/IconBox/releases/download/v1.0.24/IconBox_v1.0.24_User.zip",
+  "sha256": {
+    "installer": "45E65F5ED10FA38A924243CBD65B2F4FBFA9E8EBAA51069E754D8AC0DF26498E",
+    "portable": "9690FC1C2AD67BDE4DF6FB952324FBE44DA5E1C85C0E71B9CB684926DDA54F1B"
+  }
 }
