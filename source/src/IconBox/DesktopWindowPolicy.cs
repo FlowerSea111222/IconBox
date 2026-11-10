@@ -291,6 +291,14 @@ private static extern bool ShowWindow(IntPtr window, int command);
 			{
 				return true;
 			}
+			// 桌面的图标层是 Progman/WorkerW 的子窗口（SysListView32 "FolderView"），
+			// WindowFromPoint 命中的是子窗口，所以要顺着祖先链再看一次，
+			// 否则桌面上只要有图标就会被判成「被别的窗口占住」，Dock 永远不敢显示。
+			IntPtr root = GetAncestor(hit, 2u);
+			if (root != IntPtr.Zero && root != hit && IsDesktopClass(ClassNameOf(root)))
+			{
+				return true;
+			}
 			uint hitPid;
 			GetWindowThreadProcessId(hit, out hitPid);
 			uint ownPid;
