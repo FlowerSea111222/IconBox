@@ -1454,15 +1454,8 @@ public static class RunningWindows
 				Store.Trace("ACTIVATE raise below hwnd=" + below.ToInt64());
 				return ActivateHandle(below);
 			}
-			Store.Trace("ACTIVATE minimize branch");
-			if (!IsWindowVisible(foregroundWindow) || IsIconic(foregroundWindow))
-			{
-				// 前台窗口本来就隐藏或已最小化，再"最小化"一次等于什么都没发生，
-				// 用户的感受就是"点了没反应"；交给 Launch 真正去启动应用。
-				Store.Trace("ACTIVATE minimize skipped handle=" + foregroundWindow.ToInt64());
-				return false;
-			}
-			Minimize(foregroundWindow);
+			// 问卷 Q11.2：目标应用已经在前台时点图标 = 什么都不做（不再像任务栏那样最小化）。
+			Store.Trace("ACTIVATE already foreground, do nothing");
 			return true;
 		}
 		if (list.Count == 0)
@@ -1475,8 +1468,7 @@ public static class RunningWindows
 				{
 					return false;
 				}
-				Store.Trace("ACTIVATE launch-track minimize");
-				Minimize(foregroundWindow);
+				Store.Trace("ACTIVATE launch-track already foreground");
 				return true;
 			}
 			return false;
