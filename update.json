@@ -1,11 +1,11 @@
 {
-  "version": "1.0.24",
-  "released": "2026-11-10",
-  "notes": "1) 按问卷重写 Dock 与任务栏的联动：最大化窗口下与任务栏同帧出现、同时消失，鼠标停在 Dock 上不再被任务栏收回带走；2) 桌面常驻、真全屏与任务视图自动让开、普通窗口不遮挡；3) 悬停收起统一 900ms；4) 点 Dock 上已在前台的应用不再最小化它；5) DockGap 默认 10。",
-  "installer": "https://github.com/FlowerSea111222/IconBox/releases/download/v1.0.24/IconBox-Setup-1.0.24.exe",
-  "portable": "https://github.com/FlowerSea111222/IconBox/releases/download/v1.0.24/IconBox_v1.0.24_User.zip",
+  "version": "1.0.25",
+  "released": "2026-11-11",
+  "notes": "1) 新增「恢复桌面所有图标」：设置-通用页按钮与托盘右键菜单都能一键恢复，即使历史记录文件丢了也能扫出被隐藏的桌面图标；2) 恢复时会自动关闭「自动清除桌面图标」，避免下一次同步又把图标藏回去。",
+  "installer": "https://github.com/FlowerSea111222/IconBox/releases/download/v1.0.25/IconBox-Setup-1.0.25.exe",
+  "portable": "https://github.com/FlowerSea111222/IconBox/releases/download/v1.0.25/IconBox_v1.0.25_User.zip",
   "sha256": {
-    "installer": "45E65F5ED10FA38A924243CBD65B2F4FBFA9E8EBAA51069E754D8AC0DF26498E",
-    "portable": "9690FC1C2AD67BDE4DF6FB952324FBE44DA5E1C85C0E71B9CB684926DDA54F1B"
+    "installer": "A9F9690470CC33F076E912B04FA385D078DEAF797F93667224F9034FEA3F70DE",
+    "portable": "BE3D11DC60AF29AB59D8C6A8E6C27A756D155EE4CBB8C02643079573FF1FBCEF"
   }
 }
