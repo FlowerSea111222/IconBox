@@ -186,7 +186,7 @@ public class Controller
 		glassSuppressed = Prefs.GameMode || (Prefs.AutoGameMode && FullscreenState.Active());
 		Tray = new NotifyIcon
 		{
-			Text = "IconBox v1.0.28 · 玻璃启动台",
+			Text = "IconBox v1.0.29 · 玻璃启动台",
 			Icon = (Icon.ExtractAssociatedIcon(Assembly.GetExecutingAssembly().Location) ?? SystemIcons.Application),
 			Visible = true
 		};
@@ -1820,7 +1820,7 @@ public class Controller
 			bool settingsLight = Prefs.Light;
 			Window w = new Window
 			{
-				Title = "IconBox · 个性化与控制 v1.0.28",
+				Title = "IconBox · 个性化与控制 v1.0.29",
 				Width = Math.Min(940.0, SystemParameters.WorkArea.Width - 40.0),
 				Height = Math.Min(790.0, SystemParameters.WorkArea.Height - 50.0),
 				MinWidth = 560.0,
