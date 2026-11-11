@@ -186,7 +186,7 @@ public class Controller
 		glassSuppressed = Prefs.GameMode || (Prefs.AutoGameMode && FullscreenState.Active());
 		Tray = new NotifyIcon
 		{
-			Text = "IconBox v1.0.25 · 玻璃启动台",
+			Text = "IconBox v1.0.26 · 玻璃启动台",
 			Icon = (Icon.ExtractAssociatedIcon(Assembly.GetExecutingAssembly().Location) ?? SystemIcons.Application),
 			Visible = true
 		};
@@ -364,7 +364,7 @@ public class Controller
 			bool flag = Prefs.AutoCleanDesktopIcons;
 			Prefs.AutoCleanDesktopIcons = false;
 			Save();
-			int num = DesktopCleaner.RestoreAll();
+			int num = DesktopCleaner.RestoreAll(Prefs.Apps);
 			if (num > 0)
 			{
 				Board.SetStatus("已恢复 " + num + " 个桌面图标" + (flag ? "，并已关闭「自动清除桌面图标」" : ""));
@@ -373,6 +373,8 @@ public class Controller
 			{
 				Board.SetStatus("桌面上没有被隐藏的图标");
 			}
+			// 恢复桌面图标后刷新面板里的软件图标，避免继续显示失效状态。
+			Board.RefreshIcons();
 		}
 		catch (Exception ex)
 		{
@@ -1814,7 +1816,7 @@ public class Controller
 			bool settingsLight = Prefs.Light;
 			Window w = new Window
 			{
-				Title = "IconBox · 个性化与控制 v1.0.25",
+				Title = "IconBox · 个性化与控制 v1.0.26",
 				Width = Math.Min(940.0, SystemParameters.WorkArea.Width - 40.0),
 				Height = Math.Min(790.0, SystemParameters.WorkArea.Height - 50.0),
 				MinWidth = 560.0,
