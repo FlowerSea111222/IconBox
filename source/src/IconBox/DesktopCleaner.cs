@@ -149,6 +149,77 @@ public static class DesktopCleaner
 		}
 	}
 
+	// 面板里每个入口真正指向的目标程序（用于按“目标相同”识别桌面上的快捷方式）。
+	private static HashSet<string> PanelTargets(IEnumerable<Entry> apps)
+	{
+		HashSet<string> hashSet = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+		if (apps == null)
+		{
+			return hashSet;
+		}
+		foreach (Entry app in apps)
+		{
+			if (app == null)
+			{
+				continue;
+			}
+			string text = (app.LaunchTarget ?? string.Empty).Trim().Trim('\"');
+			if (text.Length == 0)
+			{
+				string[] array = ScanDedupRules.Resolve((app.Path ?? string.Empty).Trim());
+				text = ((array != null) ? (array[0] ?? string.Empty) : string.Empty).Trim();
+			}
+			AddTarget(hashSet, text);
+		}
+		return hashSet;
+	}
+
+	private static void AddTarget(HashSet<string> set, string path)
+	{
+		if (string.IsNullOrWhiteSpace(path))
+		{
+			return;
+		}
+		string text = path.Trim().Trim('\"');
+		if (text.Length == 0 || text.Contains("://") || text.StartsWith("shell:", StringComparison.OrdinalIgnoreCase) || text.StartsWith("::{", StringComparison.Ordinal))
+		{
+			return;
+		}
+		try
+		{
+			set.Add(WindowActivationRules.NormalizePath(Path.GetFullPath(text)));
+		}
+		catch
+		{
+			set.Add(WindowActivationRules.NormalizePath(text));
+		}
+	}
+
+	// 桌面条目是否属于面板：路径直接命中，或它是个快捷方式且目标命中。
+	private static bool InPanel(HashSet<string> paths, HashSet<string> targets, string path, string fullPath)
+	{
+		if (paths.Contains(fullPath))
+		{
+			return true;
+		}
+		string[] array = ScanDedupRules.Resolve(path);
+		if (array == null || string.IsNullOrWhiteSpace(array[0]))
+		{
+			return false;
+		}
+		string text = array[0].Trim().Trim('\"');
+		string item;
+		try
+		{
+			item = WindowActivationRules.NormalizePath(Path.GetFullPath(text));
+		}
+		catch
+		{
+			item = WindowActivationRules.NormalizePath(text);
+		}
+		return targets.Contains(item);
+	}
+
 	private static bool Excluded(string name, string path)
 	{
 		if (string.Equals(name, "desktop.ini", StringComparison.OrdinalIgnoreCase))
@@ -286,6 +357,7 @@ public static class DesktopCleaner
 	// 返回本次新隐藏的条目数。
 	public static int Apply(IEnumerable<Entry> apps)
 	{
+		HashSet<string> hashSet2 = PanelTargets(apps);
 		HashSet<string> hashSet = PanelPaths(apps);
 		if (hashSet.Count == 0)
 		{
@@ -324,7 +396,7 @@ public static class DesktopCleaner
 				{
 					// 旧版本隐藏过的条目只有 HIDDEN 位，Explorer 开着「显示隐藏的项目」时只是变灰。
 					// 只要它还在面板里，就补上 SYSTEM 位（并记进历史，方便以后恢复）。
-					if (hashSet.Contains(fullPath) && NeedsSystemUpgrade(path) && SetHidden(path, hidden: true))
+					if (InPanel(hashSet, hashSet2, path, fullPath) && NeedsSystemUpgrade(path) && SetHidden(path, hidden: true))
 					{
 						num++;
 						lock (HiddenByUs)
@@ -338,7 +410,7 @@ public static class DesktopCleaner
 					}
 					continue;
 				}
-				if (hashSet.Contains(fullPath) && SetHidden(path, hidden: true))
+				if (InPanel(hashSet, hashSet2, path, fullPath) && SetHidden(path, hidden: true))
 				{
 					num++;
 					lock (HiddenByUs)
