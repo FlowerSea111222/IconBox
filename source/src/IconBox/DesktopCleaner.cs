@@ -446,8 +446,9 @@ public static class DesktopCleaner
 	// desktop-clean-hidden.txt 可能被清理或丢失，只按历史恢复会让用户以为「按钮没反应」，
 	// 所以再兜底扫一遍桌面：同时带 HIDDEN + SYSTEM 的条目基本只可能是我们隐藏的
 	// （清理时跳过本来就带 SYSTEM 的文件，恢复时不会碰到别人的标记）。
-	public static int RestoreAll()
+	public static int RestoreAll(IEnumerable<Entry> apps)
 	{
+		HashSet<string> panel = PanelPaths(apps);
 		HashSet<string> hashSet = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 		lock (HiddenByUs)
 		{
@@ -479,16 +480,22 @@ public static class DesktopCleaner
 					{
 						continue;
 					}
-					if (SharedDesktop(candidate))
+					string full = Path.GetFullPath(candidate);
+					// 面板里收录的软件，它的桌面快捷方式也要恢复（旧版本可能只加过 Hidden 位）。
+					bool panelOwned = panel.Contains(full);
+					if (SharedDesktop(candidate) && !panelOwned)
 					{
 						continue;
 					}
 					FileAttributes attributes = File.GetAttributes(candidate);
-					if ((attributes & (FileAttributes.Hidden | FileAttributes.System)) != (FileAttributes.Hidden | FileAttributes.System))
+					// 桌面上的快捷方式（.lnk/.url）只要被隐藏就恢复：用户不会刻意把快捷方式设成隐藏。
+					bool shortcut = fileName.EndsWith(".lnk", StringComparison.OrdinalIgnoreCase) || fileName.EndsWith(".url", StringComparison.OrdinalIgnoreCase);
+					bool dropped = ((attributes & FileAttributes.Hidden) != 0) && (panelOwned || shortcut || (attributes & FileAttributes.System) != 0);
+					if (!dropped)
 					{
 						continue;
 					}
-					hashSet.Add(Path.GetFullPath(candidate));
+					hashSet.Add(full);
 				}
 				catch (Exception ex2)
 				{
@@ -497,11 +504,21 @@ public static class DesktopCleaner
 			}
 		}
 		int num = 0;
+		int num2 = 0;
 		foreach (string path in hashSet)
 		{
-			if ((File.Exists(path) || Directory.Exists(path)) && SetHidden(path, hidden: false))
+			if (!File.Exists(path) && !Directory.Exists(path))
+			{
+				continue;
+			}
+			bool flag = panel.Contains(path);
+			if (SetHidden(path, hidden: false))
 			{
 				num++;
+				if (flag)
+				{
+					num2++;
+				}
 			}
 		}
 		// 历史文件已经清空，直接删掉，避免下次启动又把旧路径读回来。
@@ -519,7 +536,7 @@ public static class DesktopCleaner
 		{
 			NotifyShellDir(dir2);
 		}
-		Store.Trace("DESKTOP restore all n=" + num);
+		Store.Trace("DESKTOP restore all n=" + num + " panel=" + num2);
 		return num;
 	}
 }
