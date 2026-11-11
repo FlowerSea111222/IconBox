@@ -872,6 +872,71 @@ public static class DesktopCleaner
 	}
 
 	// 取条目真正要启动的程序：优先 LaunchTarget，其次解 .lnk/.url，最后退回 Path。
+	// 公共桌面（C:\Users\Public\Desktop）是所有用户共用的，普通权限改不了属性；
+	// 由提权实例（--hide-public-desktop）调用，把已归类的公共快捷方式一起收起。
+	public static int HidePublicDesktop(IEnumerable<Entry> apps)
+	{
+		int num = 0;
+		HashSet<string> targets = PanelTargets(apps);
+		if (targets.Count == 0)
+		{
+			return 0;
+		}
+		string folder = Environment.GetFolderPath(Environment.SpecialFolder.CommonDesktopDirectory);
+		if (string.IsNullOrEmpty(folder) || !Directory.Exists(folder))
+		{
+			return 0;
+		}
+		foreach (string item in Directory.EnumerateFileSystemEntries(folder))
+		{
+			try
+			{
+				if (string.Equals(Path.GetFileName(item), "desktop.ini", StringComparison.OrdinalIgnoreCase))
+				{
+					continue;
+				}
+				FileAttributes attributes = File.GetAttributes(item);
+				if ((attributes & FileAttributes.Hidden) == FileAttributes.Hidden)
+				{
+					continue;
+				}
+				string[] array = ScanDedupRules.Resolve(item);
+				string text = ((array != null) ? (array[0] ?? string.Empty) : string.Empty).Trim().Trim((char)34);
+				if (text.Length == 0)
+				{
+					continue;
+				}
+				string text2;
+				try
+				{
+					text2 = WindowActivationRules.NormalizePath(Path.GetFullPath(text));
+				}
+				catch
+				{
+					text2 = WindowActivationRules.NormalizePath(text);
+				}
+				if (!targets.Contains(text2))
+				{
+					continue;
+				}
+				if (SetHidden(item, hidden: true))
+				{
+					num++;
+				}
+			}
+			catch (Exception ex)
+			{
+				Store.Log(ex);
+			}
+		}
+		if (num > 0)
+		{
+			NotifyShellDir(folder);
+		}
+		Store.Trace("DESKTOP public hide n=" + num);
+		return num;
+	}
+
 	private static string ResolveTarget(Entry app)
 	{
 		if (!string.IsNullOrWhiteSpace(app.LaunchTarget))
