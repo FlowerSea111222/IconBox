@@ -1,11 +1,11 @@
 {
-  "version": "1.0.28",
+  "version": "1.0.29",
   "released": "2026-11-11",
-  "notes": "1) 修复「自动清除已归类到面板的图标」对面板软件不生效：之前只按文件路径比对，面板里指向开始菜单快捷方式的软件，桌面上同名快捷方式（目标同一个 exe）识别不到；现在同时按快捷方式的目标程序匹配，桌面图标会被正常收起；2) 恢复按钮的行为不变（取消隐藏 → 补齐面板软件 → 刷新图标）。",
-  "installer": "https://github.com/FlowerSea111222/IconBox/releases/download/v1.0.28/IconBox-Setup-1.0.28.exe",
-  "portable": "https://github.com/FlowerSea111222/IconBox/releases/download/v1.0.28/IconBox_v1.0.28_User.zip",
+  "notes": "1) 「自动清除已归类到面板的图标」再补三类：把「此电脑 / 回收站」通过注册表开关一起收起（并修正了误写成 A2D9 的 CLSID）、把磁盘根目录快捷方式（如本地磁盘 (F)）当作系统杂物一起收起、公共桌面里属于面板软件的快捷方式也会尝试收起；2) 修了同步时的误恢复：以前按路径判断「是否还在面板」，导致收起后又被放回来，现在按目标程序判断；3) 恢复按钮会把「此电脑 / 回收站」一并放回来。",
+  "installer": "https://github.com/FlowerSea111222/IconBox/releases/download/v1.0.29/IconBox-Setup-1.0.29.exe",
+  "portable": "https://github.com/FlowerSea111222/IconBox/releases/download/v1.0.29/IconBox_v1.0.29_User.zip",
   "sha256": {
-    "installer": "8AF3B734E30FBCFE502A6BA5DECFA53A7C67524F245F13FC2DFF21E442F59964",
-    "portable": "AA4BBDF899AF7D020629FF66C1027CB242B3BB6DAD7AE84CDBBC43A0B6DB7B9B"
+    "installer": "8790E5BB171C24EEC6049F42C1AC119566D925B24EE5EB1B610A297A0DFC251A",
+    "portable": "4390231C82D8268B1D2FC416847C9ADE7DE367259475C4F939984AF09B691313"
   }
 }
