@@ -26,6 +26,9 @@ public class BoardWindow : GlassWindow
 {
 	public bool ModalBusy;
 
+	// 从面板里点「设置」时置位：设置窗口开着期间不自动收起面板（问题 3）。
+	public bool KeepOpenForSettings { get; set; }
+
 	private Controller C;
 
 	private System.Windows.Controls.TextBox Search;
@@ -284,6 +287,16 @@ public class BoardWindow : GlassWindow
 					SelectFiltered();
 					e.Handled = true;
 				}
+				else if (!Search.IsKeyboardFocusWithin && (Keyboard.Modifiers & ModifierKeys.Control) != 0 && e.Key == Key.C)
+				{
+					CopySelectedFiles();
+					e.Handled = true;
+				}
+				else if (!Search.IsKeyboardFocusWithin && (Keyboard.Modifiers & ModifierKeys.Control) != 0 && e.Key == Key.V)
+				{
+					PasteFiles();
+					e.Handled = true;
+				}
 				else if (editing && !Search.IsKeyboardFocusWithin && e.Key == Key.Delete)
 				{
 					C.RemoveMany(selected.ToArray());
@@ -311,7 +324,7 @@ public class BoardWindow : GlassWindow
 		{
 			Dispatcher.BeginInvoke((Action)(() =>
 			{
-				if (C.Prefs.BoardDismissOnDeactivate && IsVisible && !IsActive && !ModalBusy && !activeDrag && !IsContextMenuOpen() && !ShellContextMenu.Active && OwnedWindows.Count == 0 && Mouse.LeftButton != MouseButtonState.Pressed)
+				if (C.Prefs.BoardDismissOnDeactivate && IsVisible && !IsActive && !KeepOpenForSettings && !ModalBusy && !activeDrag && !IsContextMenuOpen() && !ShellContextMenu.Active && OwnedWindows.Count == 0 && Mouse.LeftButton != MouseButtonState.Pressed)
 				{
 					CollapseSmooth();
 				}
@@ -869,7 +882,7 @@ public class BoardWindow : GlassWindow
 		grid.Children.Add(editSelection);
 		System.Windows.Controls.Button button = Button("添加", (object s, RoutedEventArgs e) =>
 		{
-			C.Settings();
+			C.Settings(-1, keepPanel: true);
 		}, 30.0);
 		button.Content = CustomIcons.Settings(18.0, TextBrush);
 		button.ToolTip = "批量添加多个软件入口";
@@ -2335,6 +2348,67 @@ public class BoardWindow : GlassWindow
 		SetSelectionMode(enabled: false);
 	}
 
+	// 问题 1：面板里对文件做复制 / 粘贴。
+	// 复制走 Windows 的「文件列表」剪贴板格式（CF_HDROP），所以既能粘到资源管理器，
+	// 也能在面板里粘回来；粘贴 = 把剪贴板里的文件当成新入口收进面板。
+	internal void CopySelectedFiles()
+	{
+		List<string> list = new List<string>();
+		foreach (string item in selected)
+		{
+			if (File.Exists(item) || Directory.Exists(item))
+			{
+				list.Add(item);
+			}
+		}
+		if (list.Count == 0)
+		{
+			SetStatus("先点「多选」勾选要复制的文件");
+			return;
+		}
+		try
+		{
+			System.Collections.Specialized.StringCollection stringCollection = new System.Collections.Specialized.StringCollection();
+			stringCollection.AddRange(list.ToArray());
+			System.Windows.Clipboard.SetFileDropList(stringCollection);
+			SetStatus((list.Count == 1) ? ("已复制：" + System.IO.Path.GetFileName(list[0])) : ("已复制 " + list.Count + " 个文件"));
+		}
+		catch (Exception ex)
+		{
+			Store.Log(ex);
+			SetStatus("复制失败：" + ex.Message);
+		}
+	}
+
+	internal void PasteFiles()
+	{
+		string[] array = null;
+		try
+		{
+			if (System.Windows.Clipboard.ContainsFileDropList())
+			{
+				System.Collections.Specialized.StringCollection fileDropList = System.Windows.Clipboard.GetFileDropList();
+				array = new string[fileDropList.Count];
+				fileDropList.CopyTo(array, 0);
+			}
+		}
+		catch (Exception ex)
+		{
+			Store.Log(ex);
+		}
+		if (array == null || array.Length == 0)
+		{
+			SetStatus("剪贴板里没有文件");
+			return;
+		}
+		int count = C.Prefs.Apps.Count;
+		C.Add(array, manual: true);
+		int num = C.Prefs.Apps.Count - count;
+		SetStatus((num > 0) ? ("已粘贴 " + num + " 个文件进面板") : "这些文件已经在面板里了");
+		C.Save();
+		RefreshCategoryBar();
+	}
+
 	private void SelectFiltered()
 	{
 		foreach (Entry item in Filtered())
@@ -3551,6 +3625,15 @@ public class BoardWindow : GlassWindow
 		{
 			C.RedoBoard();
 		}, C.CanRedoBoard);
+		menu.Items.Add(new Separator());
+		action("复制所选文件 · Ctrl+C", () =>
+		{
+			CopySelectedFiles();
+		}, editing && selected.Count > 0);
+		action("粘贴文件 · Ctrl+V", () =>
+		{
+			PasteFiles();
+		}, System.Windows.Clipboard.ContainsFileDropList());
 		menu.Items.Add(new Separator());
 		action("整理图标（删除重复）", () =>
 		{
