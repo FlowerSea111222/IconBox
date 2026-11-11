@@ -243,6 +243,14 @@ public static class DesktopCleaner
 		return false;
 	}
 
+	private static bool InHistory(string fullPath)
+	{
+		lock (HiddenByUs)
+		{
+			return HiddenByUs.Contains(fullPath, StringComparer.OrdinalIgnoreCase);
+		}
+	}
+
 	private static bool IsHidden(string path)
 	{
 		try
@@ -356,7 +364,7 @@ public static class DesktopCleaner
 
 	// 执行一次清理：把桌面上已被面板收录、尚未隐藏的条目设为隐藏。
 	// 返回本次新隐藏的条目数。
-	public static int Apply(IEnumerable<Entry> apps)
+	public static int Apply(IEnumerable<Entry> apps, bool hideFiles = false)
 	{
 		HashSet<string> hashSet = PanelPaths(apps);
 		HashSet<string> hashSet2 = PanelTargets(apps);
@@ -382,10 +390,6 @@ public static class DesktopCleaner
 			foreach (string path in entries)
 			{
 				string fileName = Path.GetFileName(path);
-				if (Excluded(fileName, path))
-				{
-					continue;
-				}
 				string fullPath;
 				try
 				{
@@ -395,7 +399,26 @@ public static class DesktopCleaner
 				{
 					continue;
 				}
+				// 「隐藏 + 系统」的条目会被 Excluded 挡掉；但那是我们自己标上去的，
+				// 得放进来才能按新规则把文档 / 文件夹恢复显示（问题 2）。
+				bool inHistory = InHistory(fullPath);
+				if (Excluded(fileName, path) && !inHistory && (hideFiles || fileName.EndsWith(".lnk", StringComparison.OrdinalIgnoreCase) || fileName.EndsWith(".url", StringComparison.OrdinalIgnoreCase)))
+				{
+					continue;
+				}
 				bool owned = InPanel(hashSet, hashSet2, path, fullPath) || IsDriveShortcut(path);
+				// 默认只收起快捷方式。文档 / 文件夹被标成「隐藏 + 系统」后，
+				// 浏览器的上传对话框会默认把它们过滤掉——用户就选不到桌面上的文件了。
+				bool isShortcutFile = !Directory.Exists(path) && (fileName.EndsWith(".lnk", StringComparison.OrdinalIgnoreCase) || fileName.EndsWith(".url", StringComparison.OrdinalIgnoreCase));
+				if (owned && !hideFiles && !isShortcutFile)
+				{
+					// 旧版本把文档也标过隐藏：顺手恢复回来，免得继续在文件对话框里「消失」。
+					if (IsHidden(path) && SetHidden(path, hidden: false))
+					{
+						Store.Trace("DESKTOP clean unhide file " + fileName);
+					}
+					continue;
+				}
 				// 公共桌面上的快捷方式一般要管理员权限才能改属性；面板里的软件仍然尝试一次，失败由 SetHidden 自己吞掉。
 				if (SharedDesktop(path) && !owned)
 				{
@@ -456,7 +479,7 @@ public static class DesktopCleaner
 
 	// 同步一次：隐藏「已收录但还露在桌面」的图标，同时把「已从面板移出」的图标恢复显示。
 	// 面板增删图标后由 Controller 防抖调用，让桌面始终跟面板内容一致。
-	public static int Sync(IEnumerable<Entry> apps)
+	public static int Sync(IEnumerable<Entry> apps, bool hideFiles = false)
 	{
 		int hidden = Apply(apps);
 		HashSet<string> panel = PanelPaths(apps);
