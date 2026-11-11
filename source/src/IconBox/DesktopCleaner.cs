@@ -441,4 +441,85 @@ public static class DesktopCleaner
 		}
 		return num;
 	}
+
+	// 恢复桌面上所有被本功能隐藏过的图标（不止历史文件里记着的那些）。
+	// desktop-clean-hidden.txt 可能被清理或丢失，只按历史恢复会让用户以为「按钮没反应」，
+	// 所以再兜底扫一遍桌面：同时带 HIDDEN + SYSTEM 的条目基本只可能是我们隐藏的
+	// （清理时跳过本来就带 SYSTEM 的文件，恢复时不会碰到别人的标记）。
+	public static int RestoreAll()
+	{
+		HashSet<string> hashSet = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+		lock (HiddenByUs)
+		{
+			foreach (string known in HiddenByUs)
+			{
+				hashSet.Add(known);
+			}
+			HiddenByUs.Clear();
+		}
+		foreach (string dir in DesktopDirs())
+		{
+			string[] entries;
+			try
+			{
+				entries = Directory.GetFileSystemEntries(dir);
+			}
+			catch (Exception ex)
+			{
+				Store.Log(ex);
+				continue;
+			}
+			foreach (string candidate in entries)
+			{
+				try
+				{
+					string fileName = Path.GetFileName(candidate);
+					// desktop.ini / thumbs.db 是系统自己隐藏的文件，恢复它们只会在桌面上多出一个没用的文件。
+					if (string.Equals(fileName, "desktop.ini", StringComparison.OrdinalIgnoreCase) || string.Equals(fileName, "thumbs.db", StringComparison.OrdinalIgnoreCase))
+					{
+						continue;
+					}
+					if (SharedDesktop(candidate))
+					{
+						continue;
+					}
+					FileAttributes attributes = File.GetAttributes(candidate);
+					if ((attributes & (FileAttributes.Hidden | FileAttributes.System)) != (FileAttributes.Hidden | FileAttributes.System))
+					{
+						continue;
+					}
+					hashSet.Add(Path.GetFullPath(candidate));
+				}
+				catch (Exception ex2)
+				{
+					Store.Log(ex2);
+				}
+			}
+		}
+		int num = 0;
+		foreach (string path in hashSet)
+		{
+			if ((File.Exists(path) || Directory.Exists(path)) && SetHidden(path, hidden: false))
+			{
+				num++;
+			}
+		}
+		// 历史文件已经清空，直接删掉，避免下次启动又把旧路径读回来。
+		try
+		{
+			if (File.Exists(HideListPath))
+			{
+				File.Delete(HideListPath);
+			}
+		}
+		catch
+		{
+		}
+		foreach (string dir2 in DesktopDirs())
+		{
+			NotifyShellDir(dir2);
+		}
+		Store.Trace("DESKTOP restore all n=" + num);
+		return num;
+	}
 }
