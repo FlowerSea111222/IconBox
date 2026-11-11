@@ -186,7 +186,7 @@ public class Controller
 		glassSuppressed = Prefs.GameMode || (Prefs.AutoGameMode && FullscreenState.Active());
 		Tray = new NotifyIcon
 		{
-			Text = "IconBox v1.0.30 · 玻璃启动台",
+			Text = "IconBox v1.0.31 · 玻璃启动台",
 			Icon = (Icon.ExtractAssociatedIcon(Assembly.GetExecutingAssembly().Location) ?? SystemIcons.Application),
 			Visible = true
 		};
@@ -339,7 +339,7 @@ public class Controller
 			Save();
 			if (enabled)
 			{
-				int num = DesktopCleaner.Apply(Prefs.Apps);
+				int num = DesktopCleaner.Apply(Prefs.Apps, Prefs.AutoCleanFiles);
 				Board.SetStatus(num > 0 ? ("已从桌面隐藏 " + num + " 个已收录的图标") : "桌面已是干净的：没有需要隐藏的已收录图标");
 			}
 			else
@@ -411,7 +411,7 @@ public class Controller
 		{
 			if (Prefs.AutoCleanDesktopIcons)
 			{
-				DesktopCleaner.Sync(Prefs.Apps);
+				DesktopCleaner.Sync(Prefs.Apps, Prefs.AutoCleanFiles);
 			}
 		}
 		catch (Exception ex)
@@ -469,7 +469,7 @@ public class Controller
 			{
 				try
 				{
-					int num = DesktopCleaner.Apply(Prefs.Apps);
+					int num = DesktopCleaner.Apply(Prefs.Apps, Prefs.AutoCleanFiles);
 					if (num > 0)
 					{
 						Store.Trace("DESKTOP clean startup n=" + num);
@@ -1729,7 +1729,7 @@ public class Controller
 		return toggleButton;
 	}
 
-	public void Settings(int selectedPage = -1)
+	public void Settings(int selectedPage = -1, bool keepPanel = false)
 	{
 		if (settingsOpen)
 		{
@@ -1798,6 +1798,7 @@ public class Controller
 			preview.Stop();
 			stateTimer.Stop();
 			Dock.PinForPreview(false);
+			Board.KeepOpenForSettings = false;
 			Save();
 			try
 			{
@@ -1815,12 +1816,20 @@ public class Controller
 		{
 			// 走正常收起流程：直接 Hide() 会跳过浮层清理（媒体预览/搜索下拉会残留），
 			// 也没有淡出动画。
-			Board.CollapseSmooth();
+			// 从分类面板里点进来时（keepPanel）不收面板：设置窗口开着期间它还留在下面（问题 3）。
+			if (keepPanel)
+			{
+				Board.KeepOpenForSettings = true;
+			}
+			else
+			{
+				Board.CollapseSmooth();
+			}
 			// 设置窗口跟随应用主题（此前固定深色，浅色主题下与其余界面割裂）。
 			bool settingsLight = Prefs.Light;
 			Window w = new Window
 			{
-				Title = "IconBox · 个性化与控制 v1.0.30",
+				Title = "IconBox · 个性化与控制 v1.0.31",
 				Width = Math.Min(940.0, SystemParameters.WorkArea.Width - 40.0),
 				Height = Math.Min(790.0, SystemParameters.WorkArea.Height - 50.0),
 				MinWidth = 560.0,
@@ -3027,6 +3036,19 @@ public class Controller
 				Text = "开启后，凡是已经收进面板（Dock / 启动台）的桌面快捷方式和文件，会从桌面隐藏起来，让桌面只留下还没归类的东西。只改文件的「隐藏 + 系统」两个属性（这样即使资源管理器开着「显示隐藏的项目」也不会只显示成灰图标），不会删除、移动或修改文件内容；关掉开关会把这两个属性原样去掉、图标恢复显示。也可以随时点下面的「恢复桌面所有图标」或右键托盘图标恢复；恢复时会把这个开关一起关掉，免得下一次同步又把图标藏回去。",
 				Foreground = Tokens.LabelSecondary(settingsLight),
 				TextWrapping = TextWrapping.Wrap
+			});
+			// 文档 / 文件夹默认不收起：它们一旦被标成「隐藏 + 系统」，网站的上传对话框
+			// 会直接过滤掉，用户就选不到桌面上的文件（问题 2）。
+			func3(stackPanel6, "把文档和文件夹也一起从桌面收起（隐藏后文件对话框里看不到）", Prefs.AutoCleanFiles, delegate(bool on)
+			{
+				Prefs.AutoCleanFiles = on;
+				Save();
+				if (Prefs.AutoCleanDesktopIcons)
+				{
+					int num = DesktopCleaner.Apply(Prefs.Apps, Prefs.AutoCleanFiles);
+					Board.SetStatus((num > 0) ? ("已更新 " + num + " 个桌面条目") : "桌面上没有需要改动的条目");
+					Board.RefreshIcons();
+				}
 			});
 			// 面板增删图标后会自动同步（900ms 防抖）；这里是手动补一次，方便刚整理完立刻看到效果。
 			WrapPanel desktopCleanRow = new WrapPanel
