@@ -539,4 +539,197 @@ public static class DesktopCleaner
 		Store.Trace("DESKTOP restore all n=" + num + " panel=" + num2);
 		return num;
 	}
+
+	// 把面板里已经收录、桌面上却还没有的软件补齐成桌面快捷方式。
+	// 只处理软件本身：跳过文件夹与 shell: / ::{GUID} / ms- 这类虚拟入口。
+	public static int PlaceOnDesktop(IEnumerable<Entry> apps)
+	{
+		if (apps == null)
+		{
+			return 0;
+		}
+		string desktop = Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory);
+		if (string.IsNullOrEmpty(desktop) || !Directory.Exists(desktop))
+		{
+			return 0;
+		}
+		HashSet<string> existingNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+		HashSet<string> existingTargets = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+		string[] items;
+		try
+		{
+			items = Directory.GetFileSystemEntries(desktop);
+		}
+		catch (Exception ex)
+		{
+			Store.Log(ex);
+			return 0;
+		}
+		foreach (string item in items)
+		{
+			existingNames.Add(Path.GetFileNameWithoutExtension(item));
+			string[] resolved = ScanDedupRules.Resolve(item);
+			if (resolved != null)
+			{
+				existingTargets.Add(WindowActivationRules.NormalizePath(resolved[0]) + "|" + (resolved[1] ?? string.Empty).Trim());
+			}
+		}
+		int num = 0;
+		HashSet<string> hashSet = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+		foreach (Entry app in apps)
+		{
+			if (app == null)
+			{
+				continue;
+			}
+			string path = (app.Path ?? string.Empty).Trim();
+			if (path.Length == 0 || app.IsFolder || Directory.Exists(path))
+			{
+				continue;
+			}
+			if (path.Contains("://") || path.StartsWith("shell:", StringComparison.OrdinalIgnoreCase) || path.StartsWith("::{", StringComparison.Ordinal) || path.StartsWith("ms-", StringComparison.OrdinalIgnoreCase))
+			{
+				continue;
+			}
+			string full2 = SafeFullPath(path);
+			// 本来就躺在桌面目录里的条目不用再放一份。
+			if (full2 != null && full2.StartsWith(desktop + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase))
+			{
+				continue;
+			}
+			string target = ResolveTarget(app);
+			// 只把真正的可执行程序放回桌面：文档、网址、shell 虚拟项一律跳过。
+			if (target.Length == 0 || !File.Exists(target))
+			{
+				continue;
+			}
+			string extension = Path.GetExtension(target);
+			if (!extension.Equals(".exe", StringComparison.OrdinalIgnoreCase) && !extension.Equals(".bat", StringComparison.OrdinalIgnoreCase) && !extension.Equals(".cmd", StringComparison.OrdinalIgnoreCase) && !extension.Equals(".com", StringComparison.OrdinalIgnoreCase))
+			{
+				continue;
+			}
+			string key = WindowActivationRules.NormalizePath(target) + "|" + (app.LaunchArguments ?? string.Empty).Trim();
+			if (existingTargets.Contains(key) || !hashSet.Add(key))
+			{
+				continue;
+			}
+			string name = CleanFileName(string.IsNullOrWhiteSpace(app.Name) ? Path.GetFileNameWithoutExtension(path) : app.Name);
+			if (name.Length == 0)
+			{
+				continue;
+			}
+			string full = Path.Combine(desktop, name + ".lnk");
+			int num2 = 2;
+			while (existingNames.Contains(Path.GetFileNameWithoutExtension(full)) || File.Exists(full))
+			{
+				full = Path.Combine(desktop, name + " (" + num2 + ").lnk");
+				num2++;
+			}
+			if (!CreateShortcut(full, target, app.LaunchArguments, app.IconPath))
+			{
+				continue;
+			}
+			existingNames.Add(Path.GetFileNameWithoutExtension(full));
+			existingTargets.Add(key);
+			num++;
+		}
+		if (num > 0)
+		{
+			NotifyShellDir(desktop);
+		}
+		Store.Trace("DESKTOP place n=" + num);
+		return num;
+	}
+
+	private static string SafeFullPath(string path)
+	{
+		try
+		{
+			return Path.GetFullPath(path);
+		}
+		catch
+		{
+			return null;
+		}
+	}
+
+	// 取条目真正要启动的程序：优先 LaunchTarget，其次解 .lnk/.url，最后退回 Path。
+	private static string ResolveTarget(Entry app)
+	{
+		if (!string.IsNullOrWhiteSpace(app.LaunchTarget))
+		{
+			return app.LaunchTarget.Trim().Trim('\"');
+		}
+		string path = (app.Path ?? string.Empty).Trim();
+		string[] array = ScanDedupRules.Resolve(path);
+		if (array != null && !string.IsNullOrWhiteSpace(array[0]))
+		{
+			return array[0].Trim().Trim('\"');
+		}
+		return path;
+	}
+
+	private static string CleanFileName(string name)
+	{
+		if (string.IsNullOrWhiteSpace(name))
+		{
+			return string.Empty;
+		}
+		char[] invalid = Path.GetInvalidFileNameChars();
+		System.Text.StringBuilder builder = new System.Text.StringBuilder(name.Length);
+		foreach (char c in name.Trim())
+		{
+			builder.Append(Array.IndexOf(invalid, c) >= 0 ? (char)95 : c);
+		}
+		string text = builder.ToString().Trim().TrimEnd(new char[1] { (char)46 });
+		if (text.Length > 80)
+		{
+			text = text.Substring(0, 80).TrimEnd();
+		}
+		return text;
+	}
+
+	private static bool CreateShortcut(string linkPath, string targetPath, string arguments, string iconPath)
+	{
+		object shell = null;
+		object shortcut = null;
+		try
+		{
+			Type typeFromProgID = Type.GetTypeFromProgID("WScript.Shell");
+			if (typeFromProgID == null)
+			{
+				return false;
+			}
+			shell = Activator.CreateInstance(typeFromProgID);
+			shortcut = typeFromProgID.InvokeMember("CreateShortcut", System.Reflection.BindingFlags.InvokeMethod, null, shell, new object[1] { linkPath });
+			Type type = shortcut.GetType();
+			type.InvokeMember("TargetPath", System.Reflection.BindingFlags.SetProperty, null, shortcut, new object[1] { targetPath });
+			if (!string.IsNullOrWhiteSpace(arguments))
+			{
+				type.InvokeMember("Arguments", System.Reflection.BindingFlags.SetProperty, null, shortcut, new object[1] { arguments });
+			}
+			if (!string.IsNullOrWhiteSpace(iconPath) && File.Exists(iconPath))
+			{
+				type.InvokeMember("IconLocation", System.Reflection.BindingFlags.SetProperty, null, shortcut, new object[1] { iconPath });
+			}
+			type.InvokeMember("Save", System.Reflection.BindingFlags.InvokeMethod, null, shortcut, null);
+			return File.Exists(linkPath);
+		}
+		catch (Exception ex)
+		{
+			Store.Log(ex);
+			return false;
+		}
+		finally
+		{
+			if (shortcut != null && Marshal.IsComObject(shortcut))
+			{
+				Marshal.ReleaseComObject(shortcut);
+			}
+			if (shell != null && Marshal.IsComObject(shell))
+			{
+				Marshal.ReleaseComObject(shell);
+			}
+		}
+	}
 }
