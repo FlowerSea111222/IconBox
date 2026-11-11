@@ -59,6 +59,10 @@ public class Preferences
 	[DataMember]
 	public bool AutoCleanDesktopIcons;
 
+	// 是否连「文档 / 文件夹」也从桌面收起。默认只收起快捷方式：
+	// 文件被标成「隐藏 + 系统」后，浏览器的上传对话框默认看不到它们（问题 2）。
+	public bool AutoCleanFiles;
+
 	// 应用面板分类栏的顺序 / 名称 / 增删（null = 使用内置默认分类）。
 	[DataMember(EmitDefaultValue = false)]
 	public List<CategoryDef> Categories;
