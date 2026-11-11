@@ -1,11 +1,11 @@
 {
-  "version": "1.0.25",
+  "version": "1.0.26",
   "released": "2026-11-11",
-  "notes": "1) 新增「恢复桌面所有图标」：设置-通用页按钮与托盘右键菜单都能一键恢复，即使历史记录文件丢了也能扫出被隐藏的桌面图标；2) 恢复时会自动关闭「自动清除桌面图标」，避免下一次同步又把图标藏回去。",
-  "installer": "https://github.com/FlowerSea111222/IconBox/releases/download/v1.0.25/IconBox-Setup-1.0.25.exe",
-  "portable": "https://github.com/FlowerSea111222/IconBox/releases/download/v1.0.25/IconBox_v1.0.25_User.zip",
+  "notes": "1) 「恢复桌面所有图标」现在也会恢复面板里收录软件对应的桌面快捷方式：即使旧版本只给图标打过隐藏位（没有系统位）、或历史记录文件已经丢失，也能扫出来恢复；2) 桌面上的快捷方式（.lnk/.url）只要被隐藏就一并恢复；3) 恢复后立即刷新面板图标，不再停留在失效状态。",
+  "installer": "https://github.com/FlowerSea111222/IconBox/releases/download/v1.0.26/IconBox-Setup-1.0.26.exe",
+  "portable": "https://github.com/FlowerSea111222/IconBox/releases/download/v1.0.26/IconBox_v1.0.26_User.zip",
   "sha256": {
-    "installer": "A9F9690470CC33F076E912B04FA385D078DEAF797F93667224F9034FEA3F70DE",
-    "portable": "BE3D11DC60AF29AB59D8C6A8E6C27A756D155EE4CBB8C02643079573FF1FBCEF"
+    "installer": "EFB94AAD7F42DCD491F6F839E271A0C20632BF30C938DCDC3D5C9F2F7A27298C",
+    "portable": "EE24C4F85B60AE7D37A1A5563F83A083D17A89FC8CB37FAE011B8AE8D85A44D6"
   }
 }
