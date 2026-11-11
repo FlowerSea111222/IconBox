@@ -1,11 +1,11 @@
 {
-  "version": "1.0.30",
+  "version": "1.0.31",
   "released": "2026-11-11",
-  "notes": "1) 「恢复桌面所有图标」把「此电脑 / 回收站」也从注册表恢复回来（与收起对称）；2) 新增「以管理员身份隐藏公共桌面的图标」：公共桌面（C:\\Users\\Public\\Desktop）里的快捷方式普通权限改不了属性，点这个按钮会弹一次 UAC，只用一个提权实例把它们收起后立刻退出；3) 提权实例只做这一件事，不启动完整程序、不常驻。",
-  "installer": "https://github.com/FlowerSea111222/IconBox/releases/download/v1.0.30/IconBox-Setup-1.0.30.exe",
-  "portable": "https://github.com/FlowerSea111222/IconBox/releases/download/v1.0.30/IconBox_v1.0.30_User.zip",
+  "notes": "1) 分类面板支持 Ctrl+C / Ctrl+V 复制粘贴文件（也可在「更多」菜单里操作），可直接把资源管理器里复制的文件粘贴进面板；2) 修复浏览器「上传文件」对话框里找不到桌面文件的问题：桌面上的文档与文件夹不再被标记为「隐藏 + 系统」，只收起快捷方式；新增开关「把文档和文件夹也一起从桌面收起」默认关闭，需要时才打开；3) 在面板里点「设置」不会再让面板消失，设置界面和面板可以同时显示，关闭设置后恢复原有的「点面板外自动收起」行为。",
+  "installer": "https://github.com/FlowerSea111222/IconBox/releases/download/v1.0.31/IconBox-Setup-1.0.31.exe",
+  "portable": "https://github.com/FlowerSea111222/IconBox/releases/download/v1.0.31/IconBox_v1.0.31_User.zip",
   "sha256": {
-    "installer": "CB24358331B362A781DEF5A29ADAFE5218E88D233BEC829E841DDE4D24F1CD6D",
-    "portable": "7E228FEB3A5E8B2D1CCF94D758847A7E6883EAAAB2E7899487563EAF63B9ADE1"
+    "installer": "CC30BA273DE8543F0C115AFCA4041311BD9B8D4D47178532BB693EF3084FE927",
+    "portable": "5E2F8A9A91C19075994B89A48636D24FAED9196D233F747114AEBECE9CAE075A"
   }
 }
