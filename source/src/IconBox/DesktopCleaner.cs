@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Runtime.InteropServices;
+using Microsoft.Win32;
 
 namespace IconBox;
 
@@ -357,9 +358,11 @@ public static class DesktopCleaner
 	// 返回本次新隐藏的条目数。
 	public static int Apply(IEnumerable<Entry> apps)
 	{
-		HashSet<string> hashSet2 = PanelTargets(apps);
 		HashSet<string> hashSet = PanelPaths(apps);
-		if (hashSet.Count == 0)
+		HashSet<string> hashSet2 = PanelTargets(apps);
+		bool computer = HasShellIcon(apps, "::{20D04FE0-3AEA-1069-A2D9-08002B30309D}");
+		bool recycle = HasShellIcon(apps, "::{645FF040-5081-101B-9F08-00AA002F954E}");
+		if (hashSet.Count == 0 && hashSet2.Count == 0 && !computer && !recycle)
 		{
 			return 0;
 		}
@@ -379,7 +382,7 @@ public static class DesktopCleaner
 			foreach (string path in entries)
 			{
 				string fileName = Path.GetFileName(path);
-				if (Excluded(fileName, path) || SharedDesktop(path))
+				if (Excluded(fileName, path))
 				{
 					continue;
 				}
@@ -392,11 +395,17 @@ public static class DesktopCleaner
 				{
 					continue;
 				}
+				bool owned = InPanel(hashSet, hashSet2, path, fullPath) || IsDriveShortcut(path);
+				// 公共桌面上的快捷方式一般要管理员权限才能改属性；面板里的软件仍然尝试一次，失败由 SetHidden 自己吞掉。
+				if (SharedDesktop(path) && !owned)
+				{
+					continue;
+				}
 				if (IsHidden(path))
 				{
 					// 旧版本隐藏过的条目只有 HIDDEN 位，Explorer 开着「显示隐藏的项目」时只是变灰。
 					// 只要它还在面板里，就补上 SYSTEM 位（并记进历史，方便以后恢复）。
-					if (InPanel(hashSet, hashSet2, path, fullPath) && NeedsSystemUpgrade(path) && SetHidden(path, hidden: true))
+					if (owned && NeedsSystemUpgrade(path) && SetHidden(path, hidden: true))
 					{
 						num++;
 						lock (HiddenByUs)
@@ -410,7 +419,7 @@ public static class DesktopCleaner
 					}
 					continue;
 				}
-				if (InPanel(hashSet, hashSet2, path, fullPath) && SetHidden(path, hidden: true))
+				if (owned && SetHidden(path, hidden: true))
 				{
 					num++;
 					lock (HiddenByUs)
@@ -424,13 +433,23 @@ public static class DesktopCleaner
 				}
 			}
 		}
+		// 此电脑 / 回收站不是文件，是 Explorer 的「桌面图标」，只能改注册表开关。
+		if (computer && HideShellIcon("::{20D04FE0-3AEA-1069-A2D9-08002B30309D}", hidden: true))
+		{
+			num++;
+		}
+		if (recycle && HideShellIcon("::{645FF040-5081-101B-9F08-00AA002F954E}", hidden: true))
+		{
+			num++;
+		}
 		if (num > 0)
 		{
 			SaveHistory();
-			foreach (string dir in DesktopDirs())
+			foreach (string dir2 in DesktopDirs())
 			{
-				NotifyShellDir(dir);
+				NotifyShellDir(dir2);
 			}
+			NotifyShellChanged();
 		}
 		return num;
 	}
@@ -440,7 +459,23 @@ public static class DesktopCleaner
 	public static int Sync(IEnumerable<Entry> apps)
 	{
 		int hidden = Apply(apps);
-		int restored = RestoreOrphans(PanelPaths(apps));
+		HashSet<string> panel = PanelPaths(apps);
+		HashSet<string> targets = PanelTargets(apps);
+		int restored = RestoreOrphans(delegate(string path)
+		{
+			return panel.Contains(path) || InPanel(panel, targets, path, path) || IsDriveShortcut(path);
+		});
+		// 面板里已经没有「此电脑 / 回收站」时，把这两个桌面图标放回来。
+		if (!HasShellIcon(apps, "::{20D04FE0-3AEA-1069-A2D9-08002B30309D}") && HideShellIcon("::{20D04FE0-3AEA-1069-A2D9-08002B30309D}", hidden: false))
+		{
+			restored++;
+			NotifyShellChanged();
+		}
+		if (!HasShellIcon(apps, "::{645FF040-5081-101B-9F08-00AA002F954E}") && HideShellIcon("::{645FF040-5081-101B-9F08-00AA002F954E}", hidden: false))
+		{
+			restored++;
+			NotifyShellChanged();
+		}
 		LastSyncRestored = restored;
 		if (hidden > 0 || restored > 0)
 		{
@@ -450,12 +485,12 @@ public static class DesktopCleaner
 	}
 
 	// 只恢复「我们隐藏过、但现在已经不在面板里」的条目；用户自己隐藏的不动。
-	private static int RestoreOrphans(HashSet<string> panel)
+	private static int RestoreOrphans(Func<string, bool> owned)
 	{
 		List<string> orphans;
 		lock (HiddenByUs)
 		{
-			orphans = HiddenByUs.Where((string p) => !panel.Contains(p)).ToList();
+			orphans = HiddenByUs.Where((string p) => !owned(p)).ToList();
 			foreach (string orphan in orphans)
 			{
 				HiddenByUs.Remove(orphan);
@@ -484,6 +519,9 @@ public static class DesktopCleaner
 		return num;
 	}
 
+	// 恢复：把本次（含之前的会话）隐藏过的条目重新设为可见。
+	// 返回恢复的条目数。
+	// 只恢复「我们隐藏过、但现在已经不在面板里」的条目；用户自己隐藏的不动。
 	// 恢复：把本次（含之前的会话）隐藏过的条目重新设为可见。
 	// 返回恢复的条目数。
 	public static int Restore()
@@ -593,6 +631,15 @@ public static class DesktopCleaner
 				}
 			}
 		}
+		// 顺带把「此电脑 / 回收站」这类被收起的桌面图标放回来。
+		bool flag3 = HideShellIcon("::{20D04FE0-3AEA-1069-A2D9-08002B30309D}", hidden: false);
+		bool flag4 = HideShellIcon("::{645FF040-5081-101B-9F08-00AA002F954E}", hidden: false);
+		if (flag3 || flag4)
+		{
+			num++;
+			NotifyShellChanged();
+		}
+
 		// 历史文件已经清空，直接删掉，避免下次启动又把旧路径读回来。
 		try
 		{
@@ -711,6 +758,105 @@ public static class DesktopCleaner
 		}
 		Store.Trace("DESKTOP place n=" + num);
 		return num;
+	}
+
+	// 面板里是否收录了「此电脑」/「回收站」这类 shell 桌面图标。
+	private static bool HasShellIcon(IEnumerable<Entry> apps, string clsid)
+	{
+		if (apps == null)
+		{
+			return false;
+		}
+		foreach (Entry app in apps)
+		{
+			if (app == null)
+			{
+				continue;
+			}
+			string path = (app.Path ?? string.Empty).Trim();
+			string target = (app.LaunchTarget ?? string.Empty).Trim();
+			if (path.Equals(clsid, StringComparison.OrdinalIgnoreCase) || target.Equals(clsid, StringComparison.OrdinalIgnoreCase))
+			{
+				return true;
+			}
+		}
+		return false;
+	}
+
+	// 磁盘根目录的快捷方式（本地磁盘 (F).lnk 之类）：和系统图标一样属于「不属于任何软件」的杂物，一并收起。
+	private static bool IsDriveShortcut(string path)
+	{
+		if (!Path.GetExtension(path).Equals(".lnk", StringComparison.OrdinalIgnoreCase))
+		{
+			return false;
+		}
+		string[] array = ScanDedupRules.Resolve(path);
+		if (array == null || string.IsNullOrWhiteSpace(array[0]))
+		{
+			return false;
+		}
+		string text = array[0].Trim().Trim('\"').TrimEnd(new char[1] { (char)92 });
+		return text.Length == 2 && text[1] == (char)58;
+	}
+
+	// 此电脑 / 回收站：写 HKCU 的 HideDesktopIcons 开关，返回是否真的改了。
+	private static bool HideShellIcon(string clsid, bool hidden)
+	{
+		bool flag = false;
+		// 注册表里的值名就是 {CLSID}，不能带 shell 命名空间前缀 "::"。
+		string text2 = clsid.TrimStart(new char[1] { (char)58 });
+		// 面板里的「此电脑」写的是 A2D9（历史笔误），系统真正认的是 A2D8。
+		if (text2.Equals("{20D04FE0-3AEA-1069-A2D9-08002B30309D}", StringComparison.OrdinalIgnoreCase))
+		{
+			text2 = "{20D04FE0-3AEA-1069-A2D8-08002B30309D}";
+		}
+		string[] array = new string[2] { "NewStartPanel", "ClassicStartMenu" };
+		foreach (string text3 in array)
+		{
+			try
+			{
+				using (RegistryKey registryKey = Registry.CurrentUser.CreateSubKey("Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\HideDesktopIcons\\" + text3))
+				{
+					if (registryKey == null)
+					{
+						continue;
+					}
+					// 旧版本误写过的 "::{...}" 值名顺手清掉。
+					try
+					{
+						registryKey.DeleteValue(clsid, throwOnMissingValue: false);
+					}
+					catch
+					{
+					}
+					object value = registryKey.GetValue(text2);
+					int num = ((value is int) ? ((int)value) : 0);
+					int num2 = (hidden ? 1 : 0);
+					if (num == num2)
+					{
+						continue;
+					}
+					registryKey.SetValue(text2, num2, RegistryValueKind.DWord);
+					flag = true;
+				}
+			}
+			catch (Exception ex)
+			{
+				Store.Log(ex);
+			}
+		}
+		return flag;
+	}
+
+	private static void NotifyShellChanged()
+	{
+		try
+		{
+			SHChangeNotify(134217728, 0u, null, IntPtr.Zero);
+		}
+		catch
+		{
+		}
 	}
 
 	private static string SafeFullPath(string path)
