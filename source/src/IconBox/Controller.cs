@@ -186,7 +186,7 @@ public class Controller
 		glassSuppressed = Prefs.GameMode || (Prefs.AutoGameMode && FullscreenState.Active());
 		Tray = new NotifyIcon
 		{
-			Text = "IconBox v1.0.29 · 玻璃启动台",
+			Text = "IconBox v1.0.30 · 玻璃启动台",
 			Icon = (Icon.ExtractAssociatedIcon(Assembly.GetExecutingAssembly().Location) ?? SystemIcons.Application),
 			Visible = true
 		};
@@ -1820,7 +1820,7 @@ public class Controller
 			bool settingsLight = Prefs.Light;
 			Window w = new Window
 			{
-				Title = "IconBox · 个性化与控制 v1.0.29",
+				Title = "IconBox · 个性化与控制 v1.0.30",
 				Width = Math.Min(940.0, SystemParameters.WorkArea.Width - 40.0),
 				Height = Math.Min(790.0, SystemParameters.WorkArea.Height - 50.0),
 				MinWidth = 560.0,
@@ -3045,6 +3045,26 @@ public class Controller
 					cleanCheck.IsChecked = false;
 				}
 				RestoreDesktopIcons();
+			}));
+			desktopCleanRow.Children.Add(FeatureUi.Button("以管理员身份隐藏公共桌面的图标", () =>
+			{
+				// 公共桌面（C:\Users\Public\Desktop）是所有用户共用的，普通权限改不了属性：
+				// 只在用户主动点击时开一个提权实例，让它只做这一件事。
+				try
+				{
+					Process.Start(new ProcessStartInfo
+					{
+						FileName = Assembly.GetExecutingAssembly().Location,
+						Arguments = "--hide-public-desktop",
+						UseShellExecute = true,
+						Verb = "runas"
+					});
+				}
+				catch (Exception ex)
+				{
+					Store.Log(ex);
+					Board.SetStatus("已取消提权，公共桌面的图标没有改动");
+				}
 			}));
 			stackPanel6.Children.Add(desktopCleanRow);
 			// 自动隐藏 Windows 任务栏：直接写入系统 AppBar 的 ABS_AUTOHIDE 位（与托盘「Windows 任务栏自动隐藏」同源）。
