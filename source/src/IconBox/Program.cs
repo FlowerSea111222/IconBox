@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Linq;
 using System.Reflection;
 using System.Threading;
@@ -56,6 +56,21 @@ public static class Program
 		if (args.Length != 0 && args[0] == "--self-test")
 		{
 			return SelfTest.Run();
+		}
+		if (args.Length != 0 && args[0] == "--hide-public-desktop")
+		{
+			try
+			{
+				Preferences preferences = Store.Load(mergeJournal: false);
+				int num = DesktopCleaner.HidePublicDesktop(preferences?.Apps);
+				MessageBox.Show((num > 0) ? ("已隐藏 " + num + " 个公共桌面的快捷方式。") : "公共桌面没有需要隐藏的快捷方式。", "IconBox");
+				return 0;
+			}
+			catch (Exception ex)
+			{
+				MessageBox.Show(ex.Message, "IconBox");
+				return 1;
+			}
 		}
 		if (args.Length != 0 && args[0] == "--restore-shell")
 		{
