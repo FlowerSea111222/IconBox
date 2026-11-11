@@ -1,11 +1,11 @@
 {
-  "version": "1.0.29",
+  "version": "1.0.30",
   "released": "2026-11-11",
-  "notes": "1) 「自动清除已归类到面板的图标」再补三类：把「此电脑 / 回收站」通过注册表开关一起收起（并修正了误写成 A2D9 的 CLSID）、把磁盘根目录快捷方式（如本地磁盘 (F)）当作系统杂物一起收起、公共桌面里属于面板软件的快捷方式也会尝试收起；2) 修了同步时的误恢复：以前按路径判断「是否还在面板」，导致收起后又被放回来，现在按目标程序判断；3) 恢复按钮会把「此电脑 / 回收站」一并放回来。",
-  "installer": "https://github.com/FlowerSea111222/IconBox/releases/download/v1.0.29/IconBox-Setup-1.0.29.exe",
-  "portable": "https://github.com/FlowerSea111222/IconBox/releases/download/v1.0.29/IconBox_v1.0.29_User.zip",
+  "notes": "1) 「恢复桌面所有图标」把「此电脑 / 回收站」也从注册表恢复回来（与收起对称）；2) 新增「以管理员身份隐藏公共桌面的图标」：公共桌面（C:\\Users\\Public\\Desktop）里的快捷方式普通权限改不了属性，点这个按钮会弹一次 UAC，只用一个提权实例把它们收起后立刻退出；3) 提权实例只做这一件事，不启动完整程序、不常驻。",
+  "installer": "https://github.com/FlowerSea111222/IconBox/releases/download/v1.0.30/IconBox-Setup-1.0.30.exe",
+  "portable": "https://github.com/FlowerSea111222/IconBox/releases/download/v1.0.30/IconBox_v1.0.30_User.zip",
   "sha256": {
-    "installer": "8790E5BB171C24EEC6049F42C1AC119566D925B24EE5EB1B610A297A0DFC251A",
-    "portable": "4390231C82D8268B1D2FC416847C9ADE7DE367259475C4F939984AF09B691313"
+    "installer": "CB24358331B362A781DEF5A29ADAFE5218E88D233BEC829E841DDE4D24F1CD6D",
+    "portable": "7E228FEB3A5E8B2D1CCF94D758847A7E6883EAAAB2E7899487563EAF63B9ADE1"
   }
 }
