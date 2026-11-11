@@ -186,7 +186,7 @@ public class Controller
 		glassSuppressed = Prefs.GameMode || (Prefs.AutoGameMode && FullscreenState.Active());
 		Tray = new NotifyIcon
 		{
-			Text = "IconBox v1.0.24 · 玻璃启动台",
+			Text = "IconBox v1.0.25 · 玻璃启动台",
 			Icon = (Icon.ExtractAssociatedIcon(Assembly.GetExecutingAssembly().Location) ?? SystemIcons.Application),
 			Visible = true
 		};
@@ -354,6 +354,32 @@ public class Controller
 		}
 	}
 
+	// 设置页 / 托盘：把桌面图标全部恢复回来。
+	// 顺手把「自动清除」关掉，否则下一次同步（面板增删图标后 900ms）又会把它们藏起来，
+	// 用户会以为恢复没生效。
+	public void RestoreDesktopIcons()
+	{
+		try
+		{
+			bool flag = Prefs.AutoCleanDesktopIcons;
+			Prefs.AutoCleanDesktopIcons = false;
+			Save();
+			int num = DesktopCleaner.RestoreAll();
+			if (num > 0)
+			{
+				Board.SetStatus("已恢复 " + num + " 个桌面图标" + (flag ? "，并已关闭「自动清除桌面图标」" : ""));
+			}
+			else
+			{
+				Board.SetStatus("桌面上没有被隐藏的图标");
+			}
+		}
+		catch (Exception ex)
+		{
+			Store.Log(ex);
+		}
+	}
+
 	// 面板内容变化后，把桌面同步成「只留没归类的东西」。
 	// 必须在 Dispatcher 上执行，并且用防抖合并连续的增删操作。
 	public void ScheduleDesktopCleanSync()
@@ -501,6 +527,10 @@ public class Controller
 		contextMenuStrip2.Items.Add("恢复任务栏与桌面图标   " + Shortcut(6), null, (object s, EventArgs e) =>
 		{
 			ShellAction(3);
+		});
+		contextMenuStrip2.Items.Add("恢复被收纳的桌面图标", null, (object s, EventArgs e) =>
+		{
+			RestoreDesktopIcons();
 		});
 		contextMenuStrip2.Items.Add("Windows 任务栏自动隐藏   " + Shortcut(7), null, (object s, EventArgs e) =>
 		{
@@ -1784,7 +1814,7 @@ public class Controller
 			bool settingsLight = Prefs.Light;
 			Window w = new Window
 			{
-				Title = "IconBox · 个性化与控制 v1.0.24",
+				Title = "IconBox · 个性化与控制 v1.0.25",
 				Width = Math.Min(940.0, SystemParameters.WorkArea.Width - 40.0),
 				Height = Math.Min(790.0, SystemParameters.WorkArea.Height - 50.0),
 				MinWidth = 560.0,
@@ -2982,13 +3012,13 @@ public class Controller
 				Foreground = Tokens.LabelSecondary(settingsLight),
 				TextWrapping = TextWrapping.Wrap
 			});
-			func3(stackPanel6, "自动清除桌面上已归类到面板的图标", Prefs.AutoCleanDesktopIcons, delegate(bool on)
+			System.Windows.Controls.CheckBox cleanCheck = func3(stackPanel6, "自动清除桌面上已归类到面板的图标", Prefs.AutoCleanDesktopIcons, delegate(bool on)
 			{
 				SetDesktopClean(on);
 			});
 			stackPanel6.Children.Add(new TextBlock
 			{
-				Text = "开启后，凡是已经收进面板（Dock / 启动台）的桌面快捷方式和文件，会从桌面隐藏起来，让桌面只留下还没归类的东西。只改文件的「隐藏 + 系统」两个属性（这样即使资源管理器开着「显示隐藏的项目」也不会只显示成灰图标），不会删除、移动或修改文件内容；关掉开关会把这两个属性原样去掉、图标恢复显示。也可以随时用下面的按钮或托盘恢复全部桌面图标。",
+				Text = "开启后，凡是已经收进面板（Dock / 启动台）的桌面快捷方式和文件，会从桌面隐藏起来，让桌面只留下还没归类的东西。只改文件的「隐藏 + 系统」两个属性（这样即使资源管理器开着「显示隐藏的项目」也不会只显示成灰图标），不会删除、移动或修改文件内容；关掉开关会把这两个属性原样去掉、图标恢复显示。也可以随时点下面的「恢复桌面所有图标」或右键托盘图标恢复；恢复时会把这个开关一起关掉，免得下一次同步又把图标藏回去。",
 				Foreground = Tokens.LabelSecondary(settingsLight),
 				TextWrapping = TextWrapping.Wrap
 			});
@@ -3001,10 +3031,14 @@ public class Controller
 			{
 				SyncDesktopCleanNow();
 			}));
-			desktopCleanRow.Children.Add(FeatureUi.Button("恢复全部隐藏的图标", () =>
+			desktopCleanRow.Children.Add(FeatureUi.Button("恢复桌面所有图标", () =>
 			{
-				int num2 = DesktopCleaner.Restore();
-				Board.SetStatus(num2 > 0 ? ("已恢复 " + num2 + " 个桌面图标") : "没有需要恢复的桌面图标");
+				if (cleanCheck != null && cleanCheck.IsChecked == true)
+				{
+					// 先按正常流程关掉开关（去掉历史里记录的条目），再整体兜底扫一遍桌面。
+					cleanCheck.IsChecked = false;
+				}
+				RestoreDesktopIcons();
 			}));
 			stackPanel6.Children.Add(desktopCleanRow);
 			// 自动隐藏 Windows 任务栏：直接写入系统 AppBar 的 ABS_AUTOHIDE 位（与托盘「Windows 任务栏自动隐藏」同源）。
