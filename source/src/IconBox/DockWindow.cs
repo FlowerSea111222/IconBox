@@ -1161,7 +1161,9 @@ public class DockWindow : GlassWindow
 			double bottom = dockScreenArea.Bottom;
 			double restingTop = ((shownTop > 0.0) ? shownTop : Top);
 			bool over = !renderedHidden && point.X >= Left - 8.0 && point.X <= Left + Width + 8.0 && point.Y >= restingTop - 8.0 && point.Y <= restingTop + Height + 8.0;
-			bool edge = point.X >= Left - 12.0 && point.X <= Left + Width + 12.0 && point.Y >= bottom - C.Prefs.Dock.EdgeRange;
+			// 严格档：悬停模式下也只有光标压到屏幕最底边（2 物理像素）才唤出。
+			double strictEdge = 2.0 / Math.Max(1.0, (followDpi > 0.0) ? followDpi : VisualTreeHelper.GetDpi(this).DpiScaleY);
+			bool edge = point.X >= Left - 12.0 && point.X <= Left + Width + 12.0 && point.Y >= bottom - strictEdge;
 			bool flag = (ContextMenu != null && ContextMenu.IsOpen) || Items.Children.OfType<System.Windows.Controls.Button>().Any((System.Windows.Controls.Button b) => b.ContextMenu != null && b.ContextMenu.IsOpen);
 			bool flag2 = hidePolicy.Update(DateTime.UtcNow, C.Prefs.Dock.AutoHide, over, edge, ((dragging || DockInputBusy || externalDockDrag) | flag) || C.UiBusy || C.Board.IsVisible || OverlayOpen(), C.Prefs.Dock.HideDelay);
 			if (flag2 != renderedHidden)
@@ -1253,7 +1255,8 @@ public class DockWindow : GlassWindow
 			double screenBottom = bottomPx / dpi;
 			System.Drawing.Point cursorPx = System.Windows.Forms.Cursor.Position;
 			System.Windows.Point cursorDip = source.CompositionTarget.TransformFromDevice.Transform(new System.Windows.Point(cursorPx.X, cursorPx.Y));
-			double band = Math.Max(C.Prefs.Dock.EdgeRange, Height);
+			// 自愈同样按严格档判定：只有压到屏幕最底边才把 Dock 拉回来。
+			double band = 2.0 / dpi;
 			return cursorDip.X >= Left - 16.0 && cursorDip.X <= Left + Width + 16.0 && cursorDip.Y >= screenBottom - band;
 		}
 		catch (Exception ex)
@@ -1514,7 +1517,9 @@ public class DockWindow : GlassWindow
 				// 否则鼠标只要靠近底部 Dock 就会自己冒出来，与「移到最底部边缘才呼出」不符。
 				if (taskbarGone || (taskbarAutoHide && renderedHidden))
 				{
-					int edgeBandPx = (int)Math.Round(Math.Max(6.0, Math.Min(C.Prefs.Dock.EdgeRange, 48.0)) * dpi);
+					// 严格档：只有光标真的压到屏幕最底边（最底下 2 个物理像素）才唤出 Dock，
+					// 不再按 EdgeRange 放大判定带，避免「鼠标靠近底部就自己冒出来」。
+					int edgeBandPx = 2;
 					nearBottom = inDockX && cursorPx.Y >= bottomPx - edgeBandPx && cursorPx.Y <= bottomPx;
 				}
 			}
