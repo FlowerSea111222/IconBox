@@ -186,7 +186,7 @@ public class Controller
 		glassSuppressed = Prefs.GameMode || (Prefs.AutoGameMode && FullscreenState.Active());
 		Tray = new NotifyIcon
 		{
-			Text = "IconBox v1.0.31 · 玻璃启动台",
+			Text = "IconBox v1.0.32 · 玻璃启动台",
 			Icon = (Icon.ExtractAssociatedIcon(Assembly.GetExecutingAssembly().Location) ?? SystemIcons.Application),
 			Visible = true
 		};
@@ -1780,6 +1780,11 @@ public class Controller
 			}
 			cleaned = true;
 			settingsOpen = false;
+			// 从分类面板打开设置时设置窗被临时置顶，关闭时复位，避免之后从托盘/快捷键打开仍压住别的应用。
+			if (settingsWindow != null)
+			{
+				try { settingsWindow.Topmost = false; } catch { }
+			}
 			settingsWindow = null;
 			settingsTabs = null;
 			System.Windows.Application.Current.Dispatcher.BeginInvoke(DispatcherPriority.ApplicationIdle, (Action)(() =>
@@ -1829,7 +1834,7 @@ public class Controller
 			bool settingsLight = Prefs.Light;
 			Window w = new Window
 			{
-				Title = "IconBox · 个性化与控制 v1.0.31",
+				Title = "IconBox · 个性化与控制 v1.0.32",
 				Width = Math.Min(940.0, SystemParameters.WorkArea.Width - 40.0),
 				Height = Math.Min(790.0, SystemParameters.WorkArea.Height - 50.0),
 				MinWidth = 560.0,
@@ -3261,6 +3266,9 @@ public class Controller
 			}));
 			stackPanel6.Children.Add(wrapPanel4);
 			w.Show();
+			// 分类面板是 Topmost 的玻璃窗（GlassWindow 构造函数统一 Topmost = true），普通设置窗会被它压在下面；
+			// 从面板打开设置时把设置窗也置顶，保证「设置界面显示在分类面板之上」（关闭时 cleanup 复位）。
+			w.Topmost = keepPanel && Board.IsVisible;
 			// 设置窗口开着时把 Dock 常驻显示：调 Dock DIY / 面板主题可以当场看到效果。
 			Dock.PinForPreview(true);
 			RunningWindows.SettingsWindowHandle = new WindowInteropHelper(w).Handle;
