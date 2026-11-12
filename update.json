@@ -1,11 +1,11 @@
 {
-  "version": "1.0.32",
+  "version": "1.0.33",
   "released": "2026-11-12",
-  "notes": "设置界面现在会显示在分类面板之上（从面板打开设置时，设置窗一并置顶；关闭设置后恢复普通层）。",
-  "installer": "https://github.com/FlowerSea111222/IconBox/releases/latest/download/IconBox-Setup-1.0.32.exe",
-  "portable": "https://github.com/FlowerSea111222/IconBox/releases/latest/download/IconBox_v1.0.32_User.zip",
+  "notes": "唤出 Dock 改为严格底边触发：只有鼠标真的压到屏幕最底边（最底下 2 个像素）才出现，悬停模式与自愈路径同步收紧。",
+  "installer": "https://github.com/FlowerSea111222/IconBox/releases/latest/download/IconBox-Setup-1.0.33.exe",
+  "portable": "https://github.com/FlowerSea111222/IconBox/releases/latest/download/IconBox_v1.0.33_User.zip",
   "sha256": {
-    "installer": "9DFB94BB0ED2BD9C9AB4CD6C41F808E06B7D947F6B72A3F231CA0006B3304B2E",
-    "portable": "95D5E25CBAA0EA6612FE25FC093F82A3A33445A558F0AEFF6E6730230F30F732"
+    "installer": "85513AE1674EB8F9ED4C0109412ADE92F9ED6CA9B5F91357CD34E5349FBDFB73",
+    "portable": "A7816C1779EBE54A545D54EEBEB8214BE61AB4E6EED655ACF0CC601CD1B90417"
   }
 }
