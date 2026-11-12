@@ -3340,6 +3340,14 @@ public class DockWindow : GlassWindow
 		return C.Prefs.Dock.FollowTaskbar;
 	}
 
+	// Dock 贴在屏幕底部，窗口投影的落影只会在机身四周形成一圈淡阴影；这里直接不画投影。
+	protected override bool UsesWindowShadow()
+	{
+		return false;
+	}
+
+
+
 	public void BeginBoardPinDrag()
 	{
 		boardPinDragging = true;
