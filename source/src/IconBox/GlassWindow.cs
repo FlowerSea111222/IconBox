@@ -95,6 +95,12 @@ public class GlassWindow : Window
 		return false;
 	}
 
+	// 是否需要窗口投影（Dock 贴屏底常驻，投影只会在机身外侧留下一圈淡阴影，故 Dock 直接关闭）。
+	protected virtual bool UsesWindowShadow()
+	{
+		return true;
+	}
+
 	internal void GuardAgainstDesktop()
 	{
 		try
@@ -335,7 +341,7 @@ public class GlassWindow : Window
 		Surface.BorderThickness = new Thickness(1.0);
 		// 统一阴影：更大更柔（贴近 macOS 浮窗的扩散感），由 DesignTokens 单点维护。
 		surfaceShadow = Tokens.WindowShadow();
-		Surface.Effect = surfaceShadow;
+		Surface.Effect = (UsesWindowShadow() ? surfaceShadow : null);
 		Root.Children.Add(Surface);
 		Root.Children.Add(ContentGrid);
 		SourceInitialized += (object s, EventArgs e) =>
@@ -740,7 +746,7 @@ public class GlassWindow : Window
 		}
 		Surface.Background = GlassMaterials.Fill(CurrentMaterial, LightTheme, GlassPercent, AccentIndex);
 		Surface.BorderBrush = ((GlassPercent == 0.0) ? System.Windows.Media.Brushes.Transparent : Polish.Line(LightTheme));
-		Surface.Effect = ((GlassPercent == 0.0 || !CurrentMaterial.Shadow || SlowRender) ? null : surfaceShadow);
+		Surface.Effect = ((GlassPercent == 0.0 || !CurrentMaterial.Shadow || SlowRender || !UsesWindowShadow()) ? null : surfaceShadow);
 		foreach (Border item in from b in Root.Children.OfType<Border>()
 			where b.Tag as string == "backdrop"
 			select b)
