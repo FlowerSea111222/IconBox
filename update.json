@@ -1,11 +1,11 @@
 {
-  "version": "1.0.31",
-  "released": "2026-11-11",
-  "notes": "1) 分类面板支持 Ctrl+C / Ctrl+V 复制粘贴文件（也可在「更多」菜单里操作），可直接把资源管理器里复制的文件粘贴进面板；2) 修复浏览器「上传文件」对话框里找不到桌面文件的问题：桌面上的文档与文件夹不再被标记为「隐藏 + 系统」，只收起快捷方式；新增开关「把文档和文件夹也一起从桌面收起」默认关闭，需要时才打开；3) 在面板里点「设置」不会再让面板消失，设置界面和面板可以同时显示，关闭设置后恢复原有的「点面板外自动收起」行为。",
-  "installer": "https://github.com/FlowerSea111222/IconBox/releases/download/v1.0.31/IconBox-Setup-1.0.31.exe",
-  "portable": "https://github.com/FlowerSea111222/IconBox/releases/download/v1.0.31/IconBox_v1.0.31_User.zip",
+  "version": "1.0.32",
+  "released": "2026-11-12",
+  "notes": "设置界面现在会显示在分类面板之上（从面板打开设置时，设置窗一并置顶；关闭设置后恢复普通层）。",
+  "installer": "https://github.com/FlowerSea111222/IconBox/releases/latest/download/IconBox-Setup-1.0.32.exe",
+  "portable": "https://github.com/FlowerSea111222/IconBox/releases/latest/download/IconBox_v1.0.32_User.zip",
   "sha256": {
-    "installer": "CC30BA273DE8543F0C115AFCA4041311BD9B8D4D47178532BB693EF3084FE927",
-    "portable": "5E2F8A9A91C19075994B89A48636D24FAED9196D233F747114AEBECE9CAE075A"
+    "installer": "9DFB94BB0ED2BD9C9AB4CD6C41F808E06B7D947F6B72A3F231CA0006B3304B2E",
+    "portable": "95D5E25CBAA0EA6612FE25FC093F82A3A33445A558F0AEFF6E6730230F30F732"
   }
 }
