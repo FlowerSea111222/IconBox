@@ -1,11 +1,11 @@
 {
-  "version": "1.0.33",
+  "version": "1.0.34",
   "released": "2026-11-12",
-  "notes": "唤出 Dock 改为严格底边触发：只有鼠标真的压到屏幕最底边（最底下 2 个像素）才出现，悬停模式与自愈路径同步收紧。",
-  "installer": "https://github.com/FlowerSea111222/IconBox/releases/latest/download/IconBox-Setup-1.0.33.exe",
-  "portable": "https://github.com/FlowerSea111222/IconBox/releases/latest/download/IconBox_v1.0.33_User.zip",
+  "notes": "去掉 Dock 机身外侧那圈淡阴影：Dock 不再绘制窗口投影（大面板 / 控制中心 / 设置窗口仍保留投影）。",
+  "installer": "https://github.com/FlowerSea111222/IconBox/releases/latest/download/IconBox-Setup-1.0.34.exe",
+  "portable": "https://github.com/FlowerSea111222/IconBox/releases/latest/download/IconBox_v1.0.34_User.zip",
   "sha256": {
-    "installer": "85513AE1674EB8F9ED4C0109412ADE92F9ED6CA9B5F91357CD34E5349FBDFB73",
-    "portable": "A7816C1779EBE54A545D54EEBEB8214BE61AB4E6EED655ACF0CC601CD1B90417"
+    "installer": "A5F5B48BC2B1EBA8FA9713C099E81C113D1847A1FEDE73690CC58F1E0C2844F8",
+    "portable": "D609FA384098820931FFDEECB3B968DEBF4469025BCD5E9BD6397A34DBA844E8"
   }
 }
