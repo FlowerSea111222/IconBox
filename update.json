@@ -1,11 +1,11 @@
 {
-  "version": "1.0.35",
+  "version": "1.0.36",
   "released": "2026-11-13",
-  "notes": "公共桌面的图标现在会显示在设置里：如果还有已收录的图标因为权限没能隐藏（例如公共桌面里的快捷方式），设置 → 通用页会列出文件名，并给出一键提权按钮；启动与同步时也会在状态栏提示一次。",
-  "installer": "https://github.com/FlowerSea111222/IconBox/releases/latest/download/IconBox-Setup-1.0.35.exe",
-  "portable": "https://github.com/FlowerSea111222/IconBox/releases/latest/download/IconBox_v1.0.35_User.zip",
+  "notes": "普通窗口不最大化时，Dock 在开启任务栏自动隐藏的情况下也常驻显示（落位被其它窗口占住时自动让开，鼠标压底边仍可唤出）；同时修正前台窗口类型判定在 150% 缩放下的 DIP/像素混用问题。",
+  "installer": "https://github.com/FlowerSea111222/IconBox/releases/download/v1.0.36/IconBox-Setup-1.0.36.exe",
+  "portable": "https://github.com/FlowerSea111222/IconBox/releases/download/v1.0.36/IconBox_v1.0.36_User.zip",
   "sha256": {
-    "installer": "C73CDF9E480AA6FABCE065FA10BF4B31DF479BD07960047953EBD6ACD15C3D9E",
-    "portable": "3492CA0C3DE77694EE82F997F9D0556F16C131AE236429A5034CA9B81221FFC9"
+    "installer": "3A145C529E8A235A94BE175712FD8F9B3AD33313ED08751D1EA3E77EB5633589",
+    "portable": "C82FE4AB4EEA69496BB040BDE207B0B7F5AE81B743BA665C9E99B134FA2568BB"
   }
 }
