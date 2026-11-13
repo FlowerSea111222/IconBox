@@ -167,7 +167,7 @@ public static class BackupFiles
 		dictionary["manifest.json"] = Encode(new BackupManifest
 		{
 			Version = 1,
-			AppVersion = "1.0.34",
+			AppVersion = "1.0.35",
 			CreatedUtc = DateTime.UtcNow.ToString("o"),
 			Icons = dictionary2
 		});
