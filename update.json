@@ -1,11 +1,11 @@
 {
-  "version": "1.0.34",
-  "released": "2026-11-12",
-  "notes": "去掉 Dock 机身外侧那圈淡阴影：Dock 不再绘制窗口投影（大面板 / 控制中心 / 设置窗口仍保留投影）。",
-  "installer": "https://github.com/FlowerSea111222/IconBox/releases/latest/download/IconBox-Setup-1.0.34.exe",
-  "portable": "https://github.com/FlowerSea111222/IconBox/releases/latest/download/IconBox_v1.0.34_User.zip",
+  "version": "1.0.35",
+  "released": "2026-11-13",
+  "notes": "公共桌面的图标现在会显示在设置里：如果还有已收录的图标因为权限没能隐藏（例如公共桌面里的快捷方式），设置 → 通用页会列出文件名，并给出一键提权按钮；启动与同步时也会在状态栏提示一次。",
+  "installer": "https://github.com/FlowerSea111222/IconBox/releases/latest/download/IconBox-Setup-1.0.35.exe",
+  "portable": "https://github.com/FlowerSea111222/IconBox/releases/latest/download/IconBox_v1.0.35_User.zip",
   "sha256": {
-    "installer": "A5F5B48BC2B1EBA8FA9713C099E81C113D1847A1FEDE73690CC58F1E0C2844F8",
-    "portable": "D609FA384098820931FFDEECB3B968DEBF4469025BCD5E9BD6397A34DBA844E8"
+    "installer": "C73CDF9E480AA6FABCE065FA10BF4B31DF479BD07960047953EBD6ACD15C3D9E",
+    "portable": "3492CA0C3DE77694EE82F997F9D0556F16C131AE236429A5034CA9B81221FFC9"
   }
 }
