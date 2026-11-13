@@ -1417,11 +1417,18 @@ public class DockWindow : GlassWindow
 		{
 			return;
 		}
+		// Classify 要的是物理像素：dockScreenArea 是 DIP，必须先按 DPI 换算，否则 150% 缩放下
+		// 960 DIP 的屏底会被当成 1440 的屏底，普通窗口会被误判成最大化。
+		double classifyDpi = ((followDpi > 0.0) ? followDpi : VisualTreeHelper.GetDpi(this).DpiScaleY);
+		if (classifyDpi <= 0.0)
+		{
+			classifyDpi = 1.0;
+		}
 		ForegroundKind front = ForegroundRules.Classify(
-			(int)Math.Round(dockScreenArea.Left),
-			(int)Math.Round(dockScreenArea.Top),
-			(int)Math.Round(dockScreenArea.Right),
-			(int)Math.Round(dockScreenArea.Bottom));
+			(int)Math.Round(dockScreenArea.Left * classifyDpi),
+			(int)Math.Round(dockScreenArea.Top * classifyDpi),
+			(int)Math.Round(dockScreenArea.Right * classifyDpi),
+			(int)Math.Round(dockScreenArea.Bottom * classifyDpi));
 		// 真全屏（游戏 / 视频 / 浏览器 F11）与系统浮层（通知中心、快速设置、任务视图）一律让路：
 		// 问卷 3.4 与 Q13.3 要求这些场景 Dock 彻底不出现；设置预览与启动台面板打开时例外。
 		if ((front == ForegroundKind.Fullscreen || front == ForegroundKind.SystemOverlay) && !previewPinned && !C.Board.IsVisible)
@@ -1589,12 +1596,25 @@ public class DockWindow : GlassWindow
 			}
 			else
 			{
-				// 普通窗口：T1/T3 常驻，T2 跟随任务栏（3.3）。
-				wantVisible = ((!taskbarAutoHide || taskbarGone) ? true : (hot || taskbarRevealed || held));
-				// 常驻也不许压在窗口内容上：落位被别的窗口占住时让开（3.3 / Q6.4 / Q6.5）。
-				if (wantVisible && !cursorOverDock && !overlayOpen && !boardPinned && DockAreaBlocked())
+				// 普通窗口：T1/T3 常驻；T2（任务栏自动隐藏）同样常驻，前提是 Dock 的落位没有被别的窗口占住。
+				// 用户要求：普通窗口不最大化时 Dock 一直显示，只要不遮盖到别的窗口。
+				bool blocked = DockAreaBlocked();
+				if (!taskbarAutoHide || taskbarGone)
 				{
-					wantVisible = false;
+					wantVisible = true;
+				}
+				else if (!blocked)
+				{
+					wantVisible = true;
+					if (!taskbarRevealed && !cursorOverDock && !overlayOpen && !boardPinned)
+					{
+						followShowReason = "normal";
+					}
+				}
+				else
+				{
+					// 落位被窗口压住：只在鼠标过来 / 任务栏露出 / 保持期内短暂出现，并且不置顶压住窗口内容（Q6.4）。
+					wantVisible = hot || taskbarRevealed || held;
 				}
 			}
 			// 浮层被鼠标离开而收起时，Dock 也一起收起（直到鼠标回到屏幕底边）。
@@ -1631,6 +1651,9 @@ public class DockWindow : GlassWindow
 				// 从屏幕外起步，交给下面的指数平滑抬上来（约 200ms），不做瞬间跳位。
 				BeginAnimation(Window.TopProperty, null);
 				Top = screenBottom + 8.0;
+				// 这里直接改了 Top，必须把跟随帧唤醒：空闲时 OnFollowFrame 会被节流掉，
+				// 否则 Dock 会停在「屏幕外 + 8」不动，看起来像卡住。
+				MarkFollowBusy();
 				Store.Trace("DOCK follow show reason=" + followShowReason);
 			}
 			// 置顶只在以下情况生效：鼠标停在屏幕底边（正在唤出）、正停在 Dock 上、
