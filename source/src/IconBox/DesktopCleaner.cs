@@ -960,6 +960,70 @@ public static class DesktopCleaner
 		return num;
 	}
 
+	// 公共桌面里「已经收进面板、但还没隐藏」的快捷方式。
+	// 普通权限改不了 C:\Users\Public\Desktop 的属性，同步时只能跳过；这里把它们列出来，
+	// 供设置页显示数量、状态栏提示用户点一次提权按钮。
+	public static List<string> PendingPublicDesktop(IEnumerable<Entry> apps)
+	{
+		List<string> list = new List<string>();
+		try
+		{
+			HashSet<string> targets = PanelTargets(apps);
+			if (targets.Count == 0)
+			{
+				return list;
+			}
+			string folder = Environment.GetFolderPath(Environment.SpecialFolder.CommonDesktopDirectory);
+			if (string.IsNullOrEmpty(folder) || !Directory.Exists(folder))
+			{
+				return list;
+			}
+			foreach (string item in Directory.EnumerateFileSystemEntries(folder))
+			{
+				try
+				{
+					string fileName = Path.GetFileName(item);
+					if (string.Equals(fileName, "desktop.ini", StringComparison.OrdinalIgnoreCase))
+					{
+						continue;
+					}
+					if (IsHidden(item))
+					{
+						continue;
+					}
+					string[] array = ScanDedupRules.Resolve(item);
+					string text = ((array != null) ? (array[0] ?? string.Empty) : string.Empty).Trim().Trim((char)34);
+					if (text.Length == 0)
+					{
+						continue;
+					}
+					string text2;
+					try
+					{
+						text2 = WindowActivationRules.NormalizePath(Path.GetFullPath(text));
+					}
+					catch
+					{
+						text2 = WindowActivationRules.NormalizePath(text);
+					}
+					if (targets.Contains(text2))
+					{
+						list.Add(fileName);
+					}
+				}
+				catch (Exception ex)
+				{
+					Store.Log(ex);
+				}
+			}
+		}
+		catch (Exception ex2)
+		{
+			Store.Log(ex2);
+		}
+		return list;
+	}
+
 	private static string ResolveTarget(Entry app)
 	{
 		if (!string.IsNullOrWhiteSpace(app.LaunchTarget))
