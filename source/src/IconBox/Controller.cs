@@ -68,6 +68,9 @@ public class Controller
 		Interval = TimeSpan.FromMilliseconds(900.0)
 	};
 
+	// 公共桌面待处理提示每个会话只弹一次，避免每次同步都覆盖状态栏文字。
+	private bool publicDesktopHinted;
+
 
 	public ControlCenterWindow ControlCenter;
 
@@ -186,7 +189,7 @@ public class Controller
 		glassSuppressed = Prefs.GameMode || (Prefs.AutoGameMode && FullscreenState.Active());
 		Tray = new NotifyIcon
 		{
-			Text = "IconBox v1.0.34 · 玻璃启动台",
+			Text = "IconBox v1.0.35 · 玻璃启动台",
 			Icon = (Icon.ExtractAssociatedIcon(Assembly.GetExecutingAssembly().Location) ?? SystemIcons.Application),
 			Visible = true
 		};
@@ -330,6 +333,32 @@ public class Controller
 		}
 	}
 
+	// 公共桌面（所有用户共用）里还有几个已收进面板、却因权限没能隐藏的快捷方式。
+	// 普通权限改不了那里的属性，只能提示用户点一次提权按钮。
+	public int PendingPublicDesktopCount()
+	{
+		try
+		{
+			return DesktopCleaner.PendingPublicDesktop(Prefs.Apps).Count;
+		}
+		catch (Exception ex)
+		{
+			Store.Log(ex);
+			return 0;
+		}
+	}
+
+	// 状态栏提示：公共桌面有未处理的图标，需要管理员权限。
+	private void HintPublicDesktop(int pending)
+	{
+		if (pending <= 0 || publicDesktopHinted)
+		{
+			return;
+		}
+		publicDesktopHinted = true;
+		Board.SetStatus("公共桌面还有 " + pending + " 个图标需要管理员权限才能隐藏（设置 → 通用页可一键处理）");
+	}
+
 	// 自动清理桌面：把已被面板收录的桌面图标隐藏起来（改隐藏属性，不删文件）。
 	public void SetDesktopClean(bool enabled)
 	{
@@ -430,8 +459,9 @@ public class Controller
 				Board.SetStatus("请先打开「自动清除桌面图标」开关");
 				return;
 			}
-			int num = DesktopCleaner.Sync(Prefs.Apps);
+			int num = DesktopCleaner.Sync(Prefs.Apps, Prefs.AutoCleanFiles);
 			int restored = DesktopCleaner.LastSyncRestored;
+			int pending = PendingPublicDesktopCount();
 			if (num > 0 && restored > 0)
 			{
 				Board.SetStatus("已同步：新隐藏 " + num + " 个，恢复 " + restored + " 个图标");
@@ -444,10 +474,15 @@ public class Controller
 			{
 				Board.SetStatus("已同步：恢复显示 " + restored + " 个已移出面板的图标");
 			}
+			else if (pending > 0)
+			{
+				Board.SetStatus("已同步；公共桌面还有 " + pending + " 个图标需要管理员权限（设置 → 通用页可一键处理）");
+			}
 			else
 			{
 				Board.SetStatus("桌面与面板已经一致，无需处理");
 			}
+			HintPublicDesktop(pending);
 		}
 		catch (Exception ex)
 		{
@@ -474,6 +509,8 @@ public class Controller
 					{
 						Store.Trace("DESKTOP clean startup n=" + num);
 					}
+					// 公共桌面需要管理员权限：启动时如果还有没收起的，提示一次。
+					HintPublicDesktop(PendingPublicDesktopCount());
 				}
 				catch (Exception ex)
 				{
@@ -1834,7 +1871,7 @@ public class Controller
 			bool settingsLight = Prefs.Light;
 			Window w = new Window
 			{
-				Title = "IconBox · 个性化与控制 v1.0.34",
+				Title = "IconBox · 个性化与控制 v1.0.35",
 				Width = Math.Min(940.0, SystemParameters.WorkArea.Width - 40.0),
 				Height = Math.Min(790.0, SystemParameters.WorkArea.Height - 50.0),
 				MinWidth = 560.0,
@@ -3073,6 +3110,39 @@ public class Controller
 				}
 				RestoreDesktopIcons();
 			}));
+			TextBlock publicDesktopState = new TextBlock
+			{
+				Text = string.Empty,
+				Foreground = Tokens.LabelSecondary(settingsLight),
+				TextWrapping = TextWrapping.Wrap,
+				Margin = new Thickness(0.0, 6.0, 0.0, 0.0)
+			};
+			Action refreshPublicDesktopState = delegate
+			{
+				try
+				{
+					List<string> pending = DesktopCleaner.PendingPublicDesktop(Prefs.Apps);
+					if (pending.Count > 0)
+					{
+						publicDesktopState.Text = "公共桌面还有 " + pending.Count + " 个已收录的图标没能隐藏（普通权限改不了公共桌面）：" + string.Join("、", pending.ToArray()) + "。点左边按钮会弹一次 UAC，确认后即可隐藏。";
+					}
+					else
+					{
+						publicDesktopState.Text = "公共桌面没有待处理的图标。";
+					}
+				}
+				catch (Exception ex)
+				{
+					Store.Log(ex);
+					publicDesktopState.Text = "读取公共桌面状态失败，详情见日志。";
+				}
+			};
+			refreshPublicDesktopState();
+			// 从 UAC 对话框回来后，重新数一遍（提权实例可能已经处理完）。
+			w.Activated += delegate
+			{
+				refreshPublicDesktopState();
+			};
 			desktopCleanRow.Children.Add(FeatureUi.Button("以管理员身份隐藏公共桌面的图标", () =>
 			{
 				// 公共桌面（C:\Users\Public\Desktop）是所有用户共用的，普通权限改不了属性：
@@ -3086,6 +3156,7 @@ public class Controller
 						UseShellExecute = true,
 						Verb = "runas"
 					});
+					Board.SetStatus("已请求管理员权限：确认 UAC 后会把公共桌面里已收录的图标一起隐藏");
 				}
 				catch (Exception ex)
 				{
@@ -3094,6 +3165,7 @@ public class Controller
 				}
 			}));
 			stackPanel6.Children.Add(desktopCleanRow);
+			stackPanel6.Children.Add(publicDesktopState);
 			// 自动隐藏 Windows 任务栏：直接写入系统 AppBar 的 ABS_AUTOHIDE 位（与托盘「Windows 任务栏自动隐藏」同源）。
 			Func<bool> taskbarAutoHideState = () =>
 			{
