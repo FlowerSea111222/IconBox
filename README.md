@@ -6,6 +6,10 @@ IconBox 是一个面向 Windows 10 / 11 的桌面整理与增强工具：把桌�
 
 ![启动台面板](docs/screenshots/panel.png)
 
+| 分类图标（统一线宽） | 控制中心 | Dock |
+|---|---|---|
+| ![分类图标](docs/screenshots/chips-zoom-after.png) | ![控制中心](docs/screenshots/control-center-after.png) | ![Dock](docs/screenshots/dock-after.png) |
+
 ---
 
 ## 目录
