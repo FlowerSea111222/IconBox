@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Linq;
 using System.Reflection;
 using System.Threading;
@@ -46,57 +46,97 @@ public static class Program
 		}
 	}
 
-	[STAThread]
-	public static int Main(string[] args)
+	internal enum LaunchMode
 	{
-		if (args.Length != 0 && args[0] == "--netease-ui-bridge")
+		Normal,
+		NeteaseUiBridge,
+		SelfTest,
+		HidePublicDesktop,
+		RestoreShell
+	}
+
+	// 把 argv[0] 映射成一个模式：Main 之后只做一次 switch，不再堆一串并列的 if。
+	private static LaunchMode LaunchModeOf(string[] args)
+	{
+		if (args.Length == 0)
 		{
-			return NeteaseUiReader.Run();
+			return LaunchMode.Normal;
 		}
-		if (args.Length != 0 && args[0] == "--self-test")
+		switch (args[0])
 		{
-			return SelfTest.Run();
+		case "--netease-ui-bridge":
+			return LaunchMode.NeteaseUiBridge;
+		case "--self-test":
+			return LaunchMode.SelfTest;
+		case "--hide-public-desktop":
+			return LaunchMode.HidePublicDesktop;
+		case "--restore-shell":
+			return LaunchMode.RestoreShell;
+		default:
+			return LaunchMode.Normal;
 		}
-		if (args.Length != 0 && args[0] == "--hide-public-desktop")
+	}
+
+	// 以管理员身份隐藏公共桌面里「已收进面板」的快捷方式：由设置页按钮以 runas 启动，
+	// 只做这一件事就退出，不进入常驻的主流程。
+	private static int RunHidePublicDesktop()
+	{
+		try
 		{
+			Preferences preferences = Store.Load(mergeJournal: false);
+			int num = DesktopCleaner.HidePublicDesktop(preferences?.Apps);
+			MessageBox.Show((num > 0) ? ("已隐藏 " + num + " 个公共桌面的快捷方式。") : "公共桌面没有需要隐藏的快捷方式。", "IconBox");
+			return 0;
+		}
+		catch (Exception ex)
+		{
+			MessageBox.Show(ex.Message, "IconBox");
+			return 1;
+		}
+	}
+
+	// 一键恢复任务栏与桌面图标：已有实例在跑就转发给它处理，否则本进程直接恢复。
+	private static int RunRestoreShell()
+	{
+		try
+		{
+			if (Native.RequestRestore())
+			{
+				return 0;
+			}
 			try
 			{
-				Preferences preferences = Store.Load(mergeJournal: false);
-				int num = DesktopCleaner.HidePublicDesktop(preferences?.Apps);
-				MessageBox.Show((num > 0) ? ("已隐藏 " + num + " 个公共桌面的快捷方式。") : "公共桌面没有需要隐藏的快捷方式。", "IconBox");
-				return 0;
+				TaskbarAutoHide.ShowAndClear();
 			}
 			catch (Exception ex)
 			{
-				MessageBox.Show(ex.Message, "IconBox");
-				return 1;
+				Store.Log(ex);
 			}
+			DesktopVisibility.ShowAll();
+			MessageBox.Show("已执行任务栏和桌面图标恢复。", "IconBox");
+			return 0;
 		}
-		if (args.Length != 0 && args[0] == "--restore-shell")
+		catch (Exception ex2)
 		{
-			try
-			{
-				if (Native.RequestRestore())
-				{
-					return 0;
-				}
-				try
-				{
-					TaskbarAutoHide.ShowAndClear();
-				}
-				catch (Exception ex)
-				{
-					Store.Log(ex);
-				}
-				DesktopVisibility.ShowAll();
-				MessageBox.Show("已执行任务栏和桌面图标恢复。", "IconBox");
-				return 0;
-			}
-			catch (Exception ex2)
-			{
-				MessageBox.Show(ex2.Message, "IconBox");
-				return 1;
-			}
+			MessageBox.Show(ex2.Message, "IconBox");
+			return 1;
+		}
+	}
+
+	[STAThread]
+	public static int Main(string[] args)
+	{
+		// 命令行入口统一在这里分派：正常启动只有一条路径，后台/维护动作各走一个独立方法。
+		switch (LaunchModeOf(args))
+		{
+		case LaunchMode.NeteaseUiBridge:
+			return NeteaseUiReader.Run();
+		case LaunchMode.SelfTest:
+			return SelfTest.Run();
+		case LaunchMode.HidePublicDesktop:
+			return RunHidePublicDesktop();
+		case LaunchMode.RestoreShell:
+			return RunRestoreShell();
 		}
 		// 每次启动自动清除旧版在线更新器残留（%LOCALAPPDATA%\IconBox\updates 与
 		// IconBox.Updater.exe）。旧版卸载只删安装目录，更新器缓存里的旧版程序会在
@@ -275,6 +315,59 @@ public static class Program
 				};
 				controller = new Controller();
 				Store.Trace("START phase=controller ms=" + (Environment.TickCount - ProcessStartTick));
+				// 开发期调试入口：带 --open-control-center 启动时，等界面空闲后直接把控制中心
+				// 摊开，方便截图核对样式。正常启动（不带参数）完全不受影响。
+				if (Array.IndexOf(args, "--open-control-center") >= 0)
+				{
+					application.Dispatcher.BeginInvoke(new Action(delegate
+					{
+						try
+						{
+							if (controller.ControlCenter == null)
+							{
+								controller.ControlCenter = new ControlCenterWindow(controller);
+							}
+							controller.ControlCenter.DebugKeepOpen = true;
+							controller.ControlCenter.Toggle();
+							Store.Trace("DEBUG control-center visible=" + controller.ControlCenter.IsVisible);
+							// Dock 自动收起时会调用 ControlCenter?.Close()，截图时窗口常被顺带关掉。
+							// 调试期用定时器每 300ms 把它扶起来一次，持续 60 秒，正常启动不受影响。
+							System.Windows.Threading.DispatcherTimer debugTimer = new System.Windows.Threading.DispatcherTimer();
+							debugTimer.Interval = TimeSpan.FromMilliseconds(300.0);
+							int debugTicks = 0;
+							debugTimer.Tick += delegate
+							{
+								debugTicks++;
+								if (debugTicks > 200)
+								{
+									debugTimer.Stop();
+									return;
+								}
+								try
+								{
+									if (controller.ControlCenter == null)
+									{
+										controller.ControlCenter = new ControlCenterWindow(controller);
+									}
+									controller.ControlCenter.DebugKeepOpen = true;
+									if (!controller.ControlCenter.IsVisible)
+									{
+										controller.ControlCenter.Toggle();
+									}
+								}
+								catch (Exception exTick)
+								{
+									Store.Log(exTick);
+								}
+							};
+							debugTimer.Start();
+						}
+						catch (Exception exDbg)
+						{
+							Store.Log(exDbg);
+						}
+					}), DispatcherPriority.ApplicationIdle);
+				}
 				application.Run();
 				GC.KeepAlive(controller);
 				return 0;

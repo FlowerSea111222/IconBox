@@ -21,7 +21,9 @@ namespace IconBox
 		// 全彩/方形图标在画布内占的比例（磁贴 Border 提供底板与内边距）
 		private const double PlateFill = 0.90;
 		// 透明 glyph 放大后占画布的比例（底色由 glyph 版画进去，故可直接铺满）
-		private const double GlyphFill = 0.62;
+		private const double GlyphFill = 0.72;
+		// 不加底板的透明 glyph 占画布的比例：第三方 logo 直接站在玻璃上，不套白卡
+		private const double GlyphBareFill = 0.86;
 		// 圆角半径（相对画布边长）：约 22.7%，接近 iOS/macOS squircle 的观感
 		private const double RadiusRatio = 0.227;
 		// 透明 glyph 底板配色（深色玻璃：深色半透明；浅色玻璃：白色实心）——与 Tokens.Surface 同族
@@ -153,12 +155,35 @@ namespace IconBox
 			}
 			else
 			{
-				// 矢量图标（DrawingImage 等）先栅格化到 256×256 再走统一流程
+				// 矢量图标（DrawingImage 等）先栅格化到 256×256 再走统一流程。
+				// 这里必须等比缩放居中，不能直接把源拉成 256×256——否则非方形的
+				// SVG（宽字标、竖排 logo）会被横向或纵向压扁，磁贴上就是「图标被拉伸压缩」。
+				System.Windows.Media.Drawing drawing = null;
+				System.Windows.Media.DrawingImage drawingImage = source as System.Windows.Media.DrawingImage;
+				if (drawingImage != null)
+				{
+					drawing = drawingImage.Drawing;
+				}
+				double sw = 256.0;
+				double sh = 256.0;
+				if (drawing != null && drawing.Bounds.Width > 0.0 && drawing.Bounds.Height > 0.0)
+				{
+					sw = drawing.Bounds.Width;
+					sh = drawing.Bounds.Height;
+				}
+				else if (source.Width > 0.0 && source.Height > 0.0)
+				{
+					sw = source.Width;
+					sh = source.Height;
+				}
+				double k = Math.Min(256.0 / sw, 256.0 / sh);
+				double rw = sw * k;
+				double rh = sh * k;
 				RenderTargetBitmap raster = new RenderTargetBitmap(256, 256, 96.0, 96.0, PixelFormats.Pbgra32);
 				DrawingVisual visual = new DrawingVisual();
 				using (DrawingContext dc = visual.RenderOpen())
 				{
-					dc.DrawImage(source, new Rect(0.0, 0.0, 256.0, 256.0));
+					dc.DrawImage(source, new Rect((256.0 - rw) / 2.0, (256.0 - rh) / 2.0, rw, rh));
 				}
 				raster.Render(visual);
 				src = raster;
@@ -393,8 +418,12 @@ namespace IconBox
 
 				if (edge <= 0.35)
 				{
-					// 透明 glyph：置入中性圆角底板，glyph 放大到 ~62% 画布居中
-					return DrawGlyphPlate(content, light);
+					// 透明 glyph：默认让 logo 自己站在玻璃上（无底板、无描边），
+					// 只有「浅色主题里的浅色 logo / 深色主题里的深色 logo」这种会糊掉的组合，
+					// 才退回中性底板保证能看见。
+					double lum = MeanLuminance(pixels, w, h, minX, minY, maxX, maxY);
+					bool lowContrast = (light && lum > 0.8) || (!light && lum < 0.24);
+					return (lowContrast ? DrawGlyphPlate(content, light) : DrawBare(content));
 				}
 
 				// 介于两者之间（自由形状、宽图）：透明底 + 内接 84% 居中
@@ -409,8 +438,7 @@ namespace IconBox
 		}
 
 		// 透明底 + 居中内容（方形全彩/自由形状用）
-		private static ImageSource DrawContent(BitmapSource content, double dw, double dh)
-		{
+		private static ImageSource DrawContent(BitmapSource content, double dw, double dh)		{
 			double x = (CanvasSize - dw) / 2.0;
 			double y = (CanvasSize - dh) / 2.0;
 			DrawingGroup group = new DrawingGroup();
@@ -424,7 +452,57 @@ namespace IconBox
 			return result;
 		}
 
-		// 圆角底板 + glyph（透明 glyph 用）
+		// 透明底 + 直接放大的 glyph（无底板、无描边）：第三方 logo 保持自己的形状，
+		// 不套白圆角卡、不留一圈白边。等比缩放，绝不拉伸。
+		private static ImageSource DrawBare(BitmapSource content)
+		{
+			if (content == null)
+			{
+				return null;
+			}
+			double side = CanvasSize * GlyphBareFill;
+			double scale = Math.Min(side / content.PixelWidth, side / content.PixelHeight);
+			double dw = content.PixelWidth * scale;
+			double dh = content.PixelHeight * scale;
+			DrawingGroup group = new DrawingGroup();
+			using (DrawingContext dc = group.Open())
+			{
+				dc.DrawImage(content, new Rect((CanvasSize - dw) / 2.0, (CanvasSize - dh) / 2.0, dw, dh));
+			}
+			DrawingImage result = new DrawingImage(group);
+			result.Freeze();
+			return result;
+		}
+
+		// 裁切区域内「不透明像素」的平均亮度（0–1），用于判断 logo 会不会和底板糊在一起
+		private static double MeanLuminance(byte[] pixels, int w, int h, int minX, int minY, int maxX, int maxY)
+		{
+			int stride = w * 4;
+			double sum = 0.0;
+			int count = 0;
+			for (int y = minY; y <= maxY; y += 2)
+			{
+				int row = y * stride;
+				for (int x = minX; x <= maxX; x += 2)
+				{
+					int i = row + x * 4;
+					int a = pixels[i + 3];
+					if (a < 32)
+					{
+						continue;
+					}
+					// Pbgra32 是预乘的，先还原成直通色再算亮度
+					double b = pixels[i] * 255.0 / a;
+					double g = pixels[i + 1] * 255.0 / a;
+					double r = pixels[i + 2] * 255.0 / a;
+					sum += (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255.0;
+					count++;
+				}
+			}
+			return (count == 0) ? 0.0 : (sum / count);
+		}
+
+		// 圆角底板 + glyph（仅在对比度不够时使用）
 		private static ImageSource DrawGlyphPlate(BitmapSource content, bool light)
 		{
 			double r = CanvasSize * RadiusRatio;
@@ -433,12 +511,8 @@ namespace IconBox
 			DrawingGroup group = new DrawingGroup();
 			using (DrawingContext dc = group.Open())
 			{
-				// 底板
+				// 底板（没有描边：那圈 1px 白线在浅色玻璃上就是用户看到的那圈白边）
 				dc.DrawGeometry(new SolidColorBrush(fill), null, rect);
-				// 1px 浅描边
-				Pen stroke = new Pen(new SolidColorBrush(System.Windows.Media.Color.FromArgb(EdgeStrokeAlpha, 0xFF, 0xFF, 0xFF)), 1.0);
-				stroke.Freeze();
-				dc.DrawGeometry(null, stroke, rect);
 				// glyph
 				if (content != null)
 				{

@@ -32,6 +32,9 @@ public class BoardWindow : GlassWindow
 	private Controller C;
 
 	private System.Windows.Controls.TextBox Search;
+	private TextBlock searchHint;
+	private bool searchComposing;
+	private System.Windows.Threading.DispatcherTimer searchComposeTimer;
 
 	private Popup searchPopup;
 
@@ -44,6 +47,8 @@ public class BoardWindow : GlassWindow
 	private List<SystemSearchResult> searchItems = new List<SystemSearchResult>();
 
 	private UniformGrid Tiles;
+	// 磁贴网格的宿主格子（星形行）：只用来量「可用的高度」，不受磁贴收放影响。
+	private Grid tileHost;
 
 	// 上一次播放逐块入场动画的时间戳：快速连续切换分类时跳过动画，避免动画排队叠加造成卡顿
 	private int lastAnimateTick;
@@ -786,9 +791,13 @@ public class BoardWindow : GlassWindow
 		{
 			CornerRadius = new CornerRadius(16.0),
 			BorderThickness = new Thickness(1.0),
-			BorderBrush = new SolidColorBrush(System.Windows.Media.Color.FromArgb(90, byte.MaxValue, byte.MaxValue, byte.MaxValue)),
-			Background = new SolidColorBrush(System.Windows.Media.Color.FromArgb(25, byte.MaxValue, byte.MaxValue, byte.MaxValue)),
-			HorizontalAlignment = System.Windows.HorizontalAlignment.Stretch,
+			// 搜索框是 chrome，不是主角：原来 90 白边 + 25 白底铺满整条，视觉重量压过图标。
+			// 但也不能瘦到文字顶着边——这里是固定宽度（不是 MaxWidth：左对齐时 Border 会缩到
+			// 内容宽度，占位文字刚好把格子撑满，看起来就像被截断），给占位文字留出后半截空白。
+			BorderBrush = new SolidColorBrush(System.Windows.Media.Color.FromArgb(70, byte.MaxValue, byte.MaxValue, byte.MaxValue)),
+			Background = new SolidColorBrush(System.Windows.Media.Color.FromArgb(22, byte.MaxValue, byte.MaxValue, byte.MaxValue)),
+			HorizontalAlignment = System.Windows.HorizontalAlignment.Left,
+			Width = 240.0,
 			ClipToBounds = true,
 			Height = 36.0,
 			Margin = new Thickness(8.0, 4.0, 8.0, 4.0)
@@ -798,9 +807,11 @@ public class BoardWindow : GlassWindow
 		StackPanel stackPanel = new StackPanel
 		{
 			Orientation = System.Windows.Controls.Orientation.Horizontal,
-			HorizontalAlignment = System.Windows.HorizontalAlignment.Left,
+			// 240px 的小药丸里再塞放大镜，图标会和居中的文字抢位置，故只保留文字；
+			// 占位与输入都居中，视觉上是一个对称的搜索胶囊。
+			HorizontalAlignment = System.Windows.HorizontalAlignment.Center,
 			VerticalAlignment = VerticalAlignment.Center,
-			Margin = new Thickness(15.0, 0.0, 0.0, 0.0),
+			Margin = new Thickness(0.0),
 			IsHitTestVisible = false
 		};
 		Viewbox viewbox = new Viewbox
@@ -823,25 +834,28 @@ public class BoardWindow : GlassWindow
 		};
 		TextBlock hint = new TextBlock
 		{
-			Text = "搜索系统应用、文件、文件夹",
-			FontSize = 15.0,
+			Text = "搜索应用、文件或文件夹",
+			FontSize = 14.0,
 			Foreground = MutedBrush,
-			Margin = new Thickness(6.0, 0.0, 0.0, 0.0),
+			Margin = new Thickness(0.0),
+			HorizontalAlignment = System.Windows.HorizontalAlignment.Center,
+			TextAlignment = System.Windows.TextAlignment.Center,
 			VerticalAlignment = VerticalAlignment.Center,
 			TextTrimming = TextTrimming.CharacterEllipsis
 		};
-		stackPanel.Children.Add(viewbox);
 		stackPanel.Children.Add(hint);
 		grid2.Children.Add(stackPanel);
 		Search = new System.Windows.Controls.TextBox
 		{
-			FontSize = 15.0,
+			FontSize = 14.0,
 			Foreground = TextBrush,
 			Background = System.Windows.Media.Brushes.Transparent,
 			BorderThickness = new Thickness(0.0),
 			CaretBrush = TextBrush,
 			VerticalContentAlignment = VerticalAlignment.Center,
-			Padding = new Thickness(30.0, 0.0, 12.0, 0.0)
+			HorizontalContentAlignment = System.Windows.HorizontalAlignment.Center,
+			TextAlignment = System.Windows.TextAlignment.Center,
+			Padding = new Thickness(14.0, 0.0, 14.0, 0.0)
 		};
 		System.Windows.Media.Color idleBorder = System.Windows.Media.Color.FromArgb(90, byte.MaxValue, byte.MaxValue, byte.MaxValue);
 		System.Windows.Media.Color color = IconPacks.AccentColor(C.Prefs.Dock.Accent);
@@ -849,16 +863,49 @@ public class BoardWindow : GlassWindow
 		Search.GotKeyboardFocus += delegate
 		{
 			border.BorderBrush = new SolidColorBrush(focusBorder);
+			UpdateSearchHint();
 		};
 		Search.LostKeyboardFocus += delegate
 		{
 			border.BorderBrush = new SolidColorBrush(idleBorder);
+			UpdateSearchHint();
 		};
 		Search.TextChanged += (object s, TextChangedEventArgs e) =>
 		{
-			hint.Visibility = ((Search.Text.Length != 0) ? Visibility.Hidden : Visibility.Visible);
+			UpdateSearchHint();
 			RunSearch();
 		};
+		// 中文输入法在候选阶段不会写进 TextBox.Text，TextChanged 要到上屏才触发；
+		// 那段时间占位文字会和拼音/候选叠在一起，所以用输入法合成事件单独把它藏起来。
+		// WPF 没有 TextInputEndEvent，用「合成结束后 450ms 没有新的合成更新」来判定结束。
+		searchComposeTimer = new System.Windows.Threading.DispatcherTimer
+		{
+			Interval = TimeSpan.FromMilliseconds(450.0)
+		};
+		searchComposeTimer.Tick += delegate
+		{
+			searchComposeTimer.Stop();
+			searchComposing = false;
+			UpdateSearchHint();
+		};
+		Search.AddHandler(System.Windows.Input.TextCompositionManager.TextInputStartEvent,
+			new System.Windows.Input.TextCompositionEventHandler(delegate
+			{
+				searchComposing = true;
+				searchComposeTimer.Stop();
+				searchComposeTimer.Start();
+				UpdateSearchHint();
+			}), true);
+		Search.AddHandler(System.Windows.Input.TextCompositionManager.TextInputUpdateEvent,
+			new System.Windows.Input.TextCompositionEventHandler(delegate
+			{
+				if (searchComposing)
+				{
+					searchComposeTimer.Stop();
+					searchComposeTimer.Start();
+				}
+			}), true);
+		searchHint = hint;
 		grid2.Children.Add(Search);
 		searchHost = border;
 		searchHost.Visibility = (C.Prefs.BoardHideSearch ? Visibility.Collapsed : Visibility.Visible);
@@ -949,6 +996,7 @@ public class BoardWindow : GlassWindow
 		Grid.SetRow(dockPanel, 3);
 		layout.Children.Add(dockPanel);
 		Grid grid3 = new Grid();
+		tileHost = grid3;
 		dockPanel.Children.Add(grid3);
 		// 分类标签整体居中：外层格铺满整行并作为「拖到空白处 = 移到最末」的落点。
 		// 内层 WrapPanel 按内容宽度居中，标签不再从左侧起排。
@@ -1379,6 +1427,17 @@ public class BoardWindow : GlassWindow
 	// 返回的元素统一打 Tag = "category-glyph"，改选中态时按这个名字统一换色。
 	private FrameworkElement CategoryGlyphElement(AppCategoryRules.Category category)
 	{
+		// 内置分类优先用统一的 24 栅格图形集（CategoryGlyphs）：七个小图标共用同一线宽与圆角，
+		// 不再各自被 Stretch.Uniform 按包围盒拉伸（用户 2026-11-20：线条粗细必须一致）。
+		FrameworkElement chipGlyph = CategoryGlyphs.ForId(category.Id, TextBrush, Tokens.Type.Headline + 3.0);
+		if (chipGlyph != null)
+		{
+			chipGlyph.Margin = new Thickness(0.0, 0.0, Tokens.Space.Xs + 1.0, 0.0);
+			chipGlyph.Tag = "category-glyph";
+			chipGlyph.RenderTransformOrigin = new System.Windows.Point(0.5, 0.5);
+			chipGlyph.RenderTransform = System.Windows.Media.Transform.Identity;
+			return chipGlyph;
+		}
 		string key = CategoryIconName(category.Id);
 		FrameworkElement element;
 		if (key != null)
@@ -1416,6 +1475,12 @@ public class BoardWindow : GlassWindow
 	// 改一个分类标签里图标元素的前景（图标元素可能是 Path / GeometryGroup Path / TextBlock）。
 	private static void PaintCategoryGlyph(object glyph, System.Windows.Media.Brush brush)
 	{
+		// 新图形集外面套了一层 Viewbox（统一缩放），换色要钻到里面的 Path 上。
+		if (glyph is Viewbox viewbox)
+		{
+			PaintCategoryGlyph(viewbox.Child, brush);
+			return;
+		}
 		if (glyph is System.Windows.Shapes.Path path)
 		{
 			if (path.Fill != null && path.Fill != System.Windows.Media.Brushes.Transparent)
@@ -1990,6 +2055,19 @@ public class BoardWindow : GlassWindow
 		searchPopup.Child = border;
 	}
 
+	// 占位文字只在「没焦点、没在输入（含输入法候选）、框里没字」时显示：
+	// 光标一出现就要让位，否则光标和灰字挤在同一行上。
+	private void UpdateSearchHint()
+	{
+		if (searchHint == null)
+		{
+			return;
+		}
+		bool hide = searchComposing
+			|| (Search != null && (Search.Text.Length != 0 || Search.IsKeyboardFocusWithin));
+		searchHint.Visibility = (hide ? Visibility.Hidden : Visibility.Visible);
+	}
+
 	private void RunSearch()
 	{
 		int serial = ++searchSerial;
@@ -2482,6 +2560,7 @@ public class BoardWindow : GlassWindow
 			Tiles.Children.Add(Tile(item, num2++, animateNow));
 		}
 	}
+
 
 	private void ChangePage(int delta)
 	{
@@ -3687,8 +3766,11 @@ public class BoardWindow : GlassWindow
 		try
 		{
 			int num = BoardIconRules.Columns((Tiles.ActualWidth > 0.0) ? Tiles.ActualWidth : (Width - 104.0), C.Prefs.BoardIconSize, C.Prefs.BoardIconGap);
-			int num2 = BoardIconRules.Rows((Tiles.ActualHeight > 0.0) ? Tiles.ActualHeight : (Height - 180.0), C.Prefs.BoardIconSize, C.Prefs.BoardIconGap);
-			if (iconsDirty || columns != num || Tiles.Rows != num2)
+			// 行容量按「宿主格子的高度」算，而不是 Tiles 自己的 ActualHeight：
+			// FitTileRows 会把 Tiles 收成内容高度并居中，用它会得到 1 行 → 容量塌陷 → 反复重建。
+			double hostHeight = ((tileHost != null && tileHost.ActualHeight > 0.0) ? tileHost.ActualHeight : ((Tiles.ActualHeight > 0.0) ? Tiles.ActualHeight : (Height - 180.0)));
+			int num2 = BoardIconRules.Rows(hostHeight, C.Prefs.BoardIconSize, C.Prefs.BoardIconGap);
+			if (iconsDirty || columns != num || capacity != num * num2)
 			{
 				iconsDirty = false;
 				columns = num;

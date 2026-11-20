@@ -957,7 +957,9 @@ public class DockWindow : GlassWindow
 			}
 		}
 		System.Windows.Media.Color color = Accent(dock.Accent);
-		Surface.BorderBrush = ((GlassPercent == 0.0) ? ((System.Windows.Media.Brush)System.Windows.Media.Brushes.Transparent) : ((System.Windows.Media.Brush)new LinearGradientBrush(System.Windows.Media.Color.FromArgb((byte)Math.Min(255.0, 160.0 * EdgeStrength), color.R, color.G, color.B), System.Windows.Media.Color.FromArgb((byte)Math.Min(255.0, 30.0 * EdgeStrength), byte.MaxValue, byte.MaxValue, byte.MaxValue), 90.0)));
+		// 边缘高光收一档：原来 160/30 的硬白边在浅色玻璃上当「亮线」跳出，压成
+		// 一层淡淡的染色描边（顶部亮、末端透明），玻璃轮廓还在，但不再抢图标。
+		Surface.BorderBrush = ((GlassPercent == 0.0) ? ((System.Windows.Media.Brush)System.Windows.Media.Brushes.Transparent) : ((System.Windows.Media.Brush)new LinearGradientBrush(System.Windows.Media.Color.FromArgb((byte)Math.Min(255.0, 84.0 * EdgeStrength), color.R, color.G, color.B), System.Windows.Media.Color.FromArgb(0, byte.MaxValue, byte.MaxValue, byte.MaxValue), 90.0)));
 		UpdateRunning();
 		if (!capture)
 		{
@@ -1091,35 +1093,37 @@ public class DockWindow : GlassWindow
 	}
 
 
+	// Dock 所在显示器的底边（DIP）：优先用 Dock 自身句柄取显示器，取不到才回退工作区底边。
+	private double DockScreenBottomDip()
+	{
+		double dpi = (followDpi > 0.0) ? followDpi : VisualTreeHelper.GetDpi(this).DpiScaleY;
+		if (dpi <= 0.0) dpi = 1.0;
+		int bottomPx = TaskbarState.ScreenBottomPxFor(dockHandle);
+		return (bottomPx > 0) ? ((double)bottomPx / dpi) : dockScreenArea.Bottom;
+	}
+
+	// Dock 收起后停的位置：跟随模式滑到屏幕底边外 8DIP，悬停模式只保留 20DIP 的露出边。
+	private double DockHiddenTop()
+	{
+		return C.Prefs.Dock.FollowTaskbar ? (DockScreenBottomDip() + 8.0) : (dockScreenArea.Bottom - 20.0);
+	}
+
 	// 浮层因鼠标离开而收起时，Dock 跟着一起收起：
 	// 用户要的是「浮层和 Dock 一起消失」，而不是浮层没了、Dock 还赖在屏幕上。
 	private void HideDockWithOverlay()
 	{
-		if (!IsVisible) return;
+		if (!IsVisible || renderedHidden) return;
 		dockDismissed = true;
-		double dpi = (followDpi > 0.0) ? followDpi : VisualTreeHelper.GetDpi(this).DpiScaleY;
-		if (dpi <= 0.0) dpi = 1.0;
-		double bottom = dockScreenArea.Bottom;
-		int bottomPx = TaskbarState.ScreenBottomPxFor(dockHandle);
-		if (bottomPx > 0) bottom = (double)bottomPx / dpi;
+		renderedHidden = true;
 		if (C.Prefs.Dock.FollowTaskbar)
 		{
-			if (renderedHidden) return;
-			renderedHidden = true;
 			followTargetTop = double.NaN;
 			followHoldUntil = DateTime.MinValue;
 			followMoveTicks = 0L;
 			ApplyZOrder(false);
-			AnimateDockVisibility(hide: true, bottom + 8.0);
-			Store.Trace("DOCK hide with overlay follow");
-			return;
 		}
-		if (!renderedHidden)
-		{
-			renderedHidden = true;
-			AnimateDockVisibility(hide: true, bottom - 20.0);
-			Store.Trace("DOCK hide with overlay hover");
-		}
+		AnimateDockVisibility(hide: true, DockHiddenTop());
+		Store.Trace(C.Prefs.Dock.FollowTaskbar ? "DOCK hide with overlay follow" : "DOCK hide with overlay hover");
 	}
 
 	private void UpdateAutoHide()
@@ -1458,21 +1462,14 @@ public class DockWindow : GlassWindow
 				}
 			}
 			double dpi = followDpi;
-			double screenBottom = dockScreenArea.Bottom;
-			// 一次系统调用同时拿到「任务栏露出高度」和「显示器底边」，替代原来重复的两次查询。
+			// 底边取 Dock 自身所在显示器的底边；任务栏露出高度由 Snapshot 一次采样给出
+			// （句柄缓存 5 秒，Explorer 重启后自动失效重取）。
+			double screenBottom = DockScreenBottomDip();
 			int trayVisiblePx;
 			int trayBottomPx;
-			bool trayKnown = TaskbarState.Snapshot(out trayVisiblePx, out trayBottomPx);
-			// 底边仍以 Dock 自身所在显示器为准（多显示器时任务栏可能在另一块屏上），
-			// 快照只用来省掉「任务栏露出高度」那次重复查询。
-			int num = TaskbarState.ScreenBottomPxFor(dockHandle);
-			if (num > 0)
-			{
-				screenBottom = (double)num / dpi;
-			}
+			TaskbarState.Snapshot(out trayVisiblePx, out trayBottomPx);
 			// 连续取值：任务栏露出多少，Dock 就抬高多少；收回时自然滑回屏幕最底。
-			// 不再用「露出 >= 12DIP」这种阈值判断——那会等任务栏动画过半才动，看起来就是延迟。
-			double taskbarDip = Math.Max(0.0, (trayKnown ? (double)trayVisiblePx : (double)TaskbarState.VisibleHeight()) / dpi);
+			double taskbarDip = Math.Max(0.0, (double)trayVisiblePx / dpi);
 			// 任务栏刚露头那几像素的高度读数会来回抖（1~3DIP），归零，避免 Dock 在底部轻微抽动。
 			if (taskbarDip < 4.0)
 			{
@@ -1511,7 +1508,7 @@ public class DockWindow : GlassWindow
 					rectTop = bodyRect.Top;
 					rectBottom = bodyRect.Bottom;
 				}
-				int bottomPx = ((num > 0) ? num : (int)Math.Round(screenBottom * dpi));
+				int bottomPx = (int)Math.Round(screenBottom * dpi);
 				int bandPx = (int)Math.Round(Math.Max(6.0, Math.Min(C.Prefs.Dock.EdgeRange, 40.0)) * dpi);
 				bool inDockX = cursorPx.X >= rectLeft - 24 && cursorPx.X <= rectRight + 24;
 				// 可见时按 Dock 实际矩形（含 24 物理像素余量）判定悬停，隐藏时按屏幕底边的高带判定唤出：
@@ -2161,7 +2158,11 @@ public class DockWindow : GlassWindow
 				Width = RunDotWidth,
 				Height = RunDotHeight,
 				CornerRadius = new CornerRadius(RunDotRadius),
-				Background = new SolidColorBrush(System.Windows.Media.Color.FromRgb(135, 205, byte.MaxValue)),
+				// 「正在运行」用中性墨点（浅色玻璃上压深、深色玻璃上提亮），
+				// 把唯一的彩色信号留给前台应用的胶囊——两种蓝并排时读不出层级。
+				Background = new SolidColorBrush(C.Prefs.Light
+					? System.Windows.Media.Color.FromArgb(0x52, 0x0B, 0x0D, 0x12)
+					: System.Windows.Media.Color.FromArgb(0x66, 0xFF, 0xFF, 0xFF)),
 				HorizontalAlignment = System.Windows.HorizontalAlignment.Center,
 				VerticalAlignment = VerticalAlignment.Bottom,
 				Margin = new Thickness(0.0, 0.0, 0.0, runDotMarginBottom),

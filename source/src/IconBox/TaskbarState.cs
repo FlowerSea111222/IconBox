@@ -44,11 +44,6 @@ public static class TaskbarState
 	[DllImport("user32.dll", CharSet = CharSet.Unicode)]
 	private static extern bool GetMonitorInfo(IntPtr hMonitor, ref MONITORINFO info);
 
-	public static IntPtr Handle()
-	{
-		return FindWindow("Shell_TrayWnd", null);
-	}
-
 	// 任务栏句柄缓存：FindWindow 每次都要走 user32 的窗口表查找，跟随任务栏时每秒调用几十次，
 	// 句柄在 Explorer 不重启时是稳定的。5 秒过期一次，失效时下面再校验一次矩形读取。
 	private static IntPtr cachedTray;
@@ -68,7 +63,7 @@ public static class TaskbarState
 	}
 
 	// 一次采样同时给出「任务栏可见高度」与「任务栏所在显示器底边」，
-	// 省掉跟随循环里 VisibleHeight() + ScreenBottomPxFor() 两次重复的 FindWindow/GetMonitorInfo。
+	// 跟随循环里「任务栏露出高度 + 显示器底边」都由这一处采样给出，不再各自 FindWindow/GetMonitorInfo。
 	public static bool Snapshot(out int visiblePx, out int monitorBottomPx)
 	{
 		visiblePx = 0;
@@ -103,48 +98,6 @@ public static class TaskbarState
 
 	// 主任务栏当前「可见高度」（与 GetWindowRect 同坐标系的像素）。隐藏时≈1~2px，弹出时为完整高度。
 	// 用任务栏矩形与所在显示器矩形的竖直交集衡量——两者都由 user32 在同一 DPI 虚拟化上下文返回，坐标一致。
-	public static int VisibleHeight()
-	{
-		IntPtr h = Handle();
-		if (h == IntPtr.Zero || !IsWindowVisible(h))
-		{
-			return 0;
-		}
-		if (!GetWindowRect(h, out RECT r))
-		{
-			return 0;
-		}
-		int limit = r.Bottom;
-		IntPtr mon = MonitorFromWindow(h, MONITOR_DEFAULTTONEAREST);
-		if (mon != IntPtr.Zero)
-		{
-			MONITORINFO mi = new MONITORINFO
-			{
-				cbSize = (uint)Marshal.SizeOf(typeof(MONITORINFO))
-			};
-			if (GetMonitorInfo(mon, ref mi))
-			{
-				limit = mi.rcMonitor.Bottom;
-			}
-		}
-		int visible = Math.Min(r.Bottom, limit) - r.Top;
-		return Math.Max(0, visible);
-	}
-
-	// 任务栏是否处于「弹出态」：可见高度达到阈值（自动隐藏时隐藏态≈1~2px，弹出态≈完整高度）。
-	public static bool IsRevealed(double screenBottomDip, double dpiScale)
-	{
-		int h = VisibleHeight();
-		int threshold = (int)Math.Max(6.0, 12.0 * dpiScale);
-		return h >= threshold;
-	}
-
-	// 任务栏所在显示器的垂直底边（物理像素，与 VisibleHeight 同一 GetMonitorInfo 坐标系）。
-	// 用于 Dock「跟随任务栏」时的绝对定位参照，避免与 WorkArea（可能被 DPI 虚拟化/工作区缓存影响）不一致。
-	public static int ScreenBottomPx()
-	{
-		return MonitorBottomPx(Handle());
-	}
 
 	// 以给定窗口（通常传 Dock 自身句柄）所在显示器底边为准（物理像素），
 	// 避免多显示器时误取到别的任务栏/显示器。

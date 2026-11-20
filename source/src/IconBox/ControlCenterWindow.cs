@@ -97,11 +97,13 @@ public class ControlCenterWindow : GlassWindow
 	private Slider volumeSlider;
 	private TextBlock volumeValue;
 	private System.Windows.Controls.ContentControl muteIcon;
+	private Button muteButton;
 	private Border outputSection;
 	private Button outputButton;
 	private Border brightnessSection;
 	private Slider brightnessSlider;
 	private TextBlock brightnessValue;
+	private Style sliderStyle;
 	private Border btSection;
 	private StackPanel btListPanel;
 	private StackPanel homePage;
@@ -123,6 +125,9 @@ public class ControlCenterWindow : GlassWindow
 	private double smallRowRadius = 10.0;
 
 	private double innerRadius = 8.0;
+
+	// 开发期开关：为真时失去焦点也不自动收起，供 --open-control-center 截图核对样式用。
+	internal bool DebugKeepOpen;
 
 	public ControlCenterWindow(Controller c)
 		: base(24.0)
@@ -147,7 +152,9 @@ public class ControlCenterWindow : GlassWindow
 		};
 		Deactivated += (object s, EventArgs e) =>
 		{
-			if (!suppressHide && !ShellContextMenu.Active)
+			// DebugKeepOpen 仅供开发期截图核对样式（--open-control-center 时置真），
+			// 正常路径下恒为 false，失焦即收起的行为不变。
+			if (!suppressHide && !ShellContextMenu.Active && !DebugKeepOpen)
 			{
 				ClosePanel();
 			}
@@ -212,6 +219,15 @@ public class ControlCenterWindow : GlassWindow
 		btSwitchRow.BorderBrush = lineBrush;
 		sysRow.Background = cardBrush;
 		sysRow.BorderBrush = lineBrush;
+		// 输出设备用 ghost 按钮：只在悬停时浮出一层浅底，静态时不占视觉重量。
+		outputButton.Style = Polish.ButtonStyle(LightTheme, "ghost");
+		outputButton.Foreground = MutedBrush;
+		outputButton.FontSize = 12.5;
+		if (muteButton != null)
+		{
+			muteButton.Style = Polish.ButtonStyle(LightTheme, "ghost");
+		}
+		ApplySliderStyle();
 	}
 
 	// ==================== UI 构建 ====================
@@ -228,14 +244,16 @@ public class ControlCenterWindow : GlassWindow
 		};
 	}
 
+	// 区块不再画 1px 边框：同色的圆角块靠间距分组就够了，加了边框会让每块都像一张
+	// 独立的设置卡（Windows 设置页的观感），留白反而更清楚。
 	private Border SectionCard()
 	{
 		return new Border
 		{
 			CornerRadius = new CornerRadius(cardRadius),
-			Padding = new Thickness(16.0),
-			Margin = new Thickness(0.0, 8.0, 0.0, 0.0),
-			BorderThickness = new Thickness(1.0)
+			Padding = new Thickness(14.0, 13.0, 14.0, 13.0),
+			Margin = new Thickness(0.0, 10.0, 0.0, 0.0),
+			BorderThickness = new Thickness(0.0)
 		};
 	}
 
@@ -244,9 +262,9 @@ public class ControlCenterWindow : GlassWindow
 		Border tile = new Border
 		{
 			CornerRadius = new CornerRadius(cardRadius),
-			Padding = new Thickness(14.0),
-			Margin = new Thickness(4.0, 0.0, 4.0, 0.0),
-			BorderThickness = new Thickness(1.0),
+			Padding = new Thickness(13.0, 12.0, 13.0, 12.0),
+			Margin = new Thickness(0.0),
+			BorderThickness = new Thickness(0.0),
 			Cursor = Cursors.Hand,
 			Tag = kind
 		};
@@ -270,7 +288,7 @@ public class ControlCenterWindow : GlassWindow
 			VerticalAlignment = VerticalAlignment.Center
 		};
 		stack.Children.Add(Label(title, 13.0, FontWeights.SemiBold, TextBrush));
-		status = Label("", 10.5, FontWeights.Normal, MutedBrush);
+		status = Label("", 11.0, FontWeights.Normal, MutedBrush);
 		status.Margin = new Thickness(0.0, 3.0, 0.0, 0.0);
 		stack.Children.Add(status);
 		Grid.SetColumn(stack, 1);
@@ -321,7 +339,68 @@ public class ControlCenterWindow : GlassWindow
 		}
 		tile.Child = grid;
 		tile.MouseLeftButtonUp += toggle;
+		// 去掉边框后需要一个「这块能点」的反馈，用极轻的底色变化代替描边。
+		tile.MouseEnter += (object s, System.Windows.Input.MouseEventArgs e) =>
+		{
+			tile.Background = hoverBrush;
+		};
+		tile.MouseLeave += (object s, System.Windows.Input.MouseEventArgs e) =>
+		{
+			tile.Background = cardBrush;
+		};
 		return tile;
+	}
+
+	// 控制中心里的滑块统一成「细轨道 + 小圆钮」。Windows 默认模板那条粗蓝轨道加上
+	// 大号拖把，是整个面板里最响的一处；换成 4px 轨道 + 14px 圆钮后，颜色只留在
+	// 已经走过的那一小段填充上，其余全是安静的灰。
+	private void ApplySliderStyle()
+	{
+		string fill = Hex(accentColor);
+		string track = LightTheme ? "#2E191C22" : "#33FFFFFF";
+		string thumb = LightTheme ? "#FFFFFFFF" : "#FFEDEEF2";
+		string thumbLine = LightTheme ? "#1F000000" : "#40FFFFFF";
+		string xaml = "<ResourceDictionary xmlns='http://schemas.microsoft.com/winfx/2006/xaml/presentation' xmlns:x='http://schemas.microsoft.com/winfx/2006/xaml'>"
+			+ "<ControlTemplate x:Key='ccFill' TargetType='RepeatButton'><Border Height='4' CornerRadius='2' Background='" + fill + "' VerticalAlignment='Center'/></ControlTemplate>"
+			+ "<ControlTemplate x:Key='ccEmpty' TargetType='RepeatButton'><Border Height='4' Background='Transparent' VerticalAlignment='Center'/></ControlTemplate>"
+			+ "<ControlTemplate x:Key='ccThumb' TargetType='Thumb'><Border Width='14' Height='14' CornerRadius='7' Background='" + thumb + "' BorderBrush='" + thumbLine + "' BorderThickness='0.5'><Border.Effect><DropShadowEffect BlurRadius='5' ShadowDepth='0.5' Opacity='0.18' Color='#000000'/></Border.Effect></Border></ControlTemplate>"
+			+ "<Style x:Key='ccSlider' TargetType='{x:Type Slider}'>"
+			+ "<Setter Property='Template'><Setter.Value>"
+			+ "<ControlTemplate TargetType='{x:Type Slider}'>"
+			+ "<Grid Height='18' VerticalAlignment='Center'>"
+			+ "<Border Height='4' CornerRadius='2' VerticalAlignment='Center' Background='" + track + "'/>"
+			+ "<Track x:Name='PART_Track'>"
+			+ "<Track.DecreaseRepeatButton><RepeatButton Template='{StaticResource ccFill}' Focusable='False'/></Track.DecreaseRepeatButton>"
+			+ "<Track.Thumb><Thumb Template='{StaticResource ccThumb}'/></Track.Thumb>"
+			+ "<Track.IncreaseRepeatButton><RepeatButton Template='{StaticResource ccEmpty}' Focusable='False'/></Track.IncreaseRepeatButton>"
+			+ "</Track></Grid></ControlTemplate></Setter.Value></Setter></Style>"
+			+ "</ResourceDictionary>";
+		try
+		{
+			ResourceDictionary dict = (ResourceDictionary)System.Windows.Markup.XamlReader.Parse(xaml);
+			sliderStyle = dict["ccSlider"] as Style;
+			Resources[typeof(Slider)] = sliderStyle;
+			// 隐式样式在这个窗口里不一定被命中（内容树经 GlassWindow 的层叠），所以两个
+			// 滑块同时显式挂上，保证换主题后也是同一套外观。
+			if (volumeSlider != null)
+			{
+				volumeSlider.Style = sliderStyle;
+			}
+			if (brightnessSlider != null)
+			{
+				brightnessSlider.Style = sliderStyle;
+			}
+			Store.Trace("DEBUG slider-style applied=" + ((sliderStyle != null) ? "yes" : "null"));
+		}
+		catch (Exception ex)
+		{
+			Store.Log(ex);
+		}
+	}
+
+	private static string Hex(System.Windows.Media.Color c)
+	{
+		return "#" + c.A.ToString("X2") + c.R.ToString("X2") + c.G.ToString("X2") + c.B.ToString("X2");
 	}
 
 	private void BuildUi()
@@ -349,25 +428,15 @@ public class ControlCenterWindow : GlassWindow
 			Margin = new Thickness(16.0, 14.0, 16.0, 18.0)
 		};
 
-		Grid header = new Grid
-		{
-			Margin = new Thickness(4.0, 0.0, 4.0, 10.0)
-		};
-		header.ColumnDefinitions.Add(new ColumnDefinition());
-		header.ColumnDefinitions.Add(new ColumnDefinition
-		{
-			Width = GridLength.Auto
-		});
-		header.Children.Add(Label("控制中心", 16.0, FontWeights.SemiBold, TextBrush));
-		TextBlock tip = Label("跟随 Dock 主题", 10.5, FontWeights.Normal, MutedBrush);
-		tip.VerticalAlignment = VerticalAlignment.Center;
-		Grid.SetColumn(tip, 1);
-		header.Children.Add(tip);
+		// 标题只留一行字。原来右侧那句「跟随 Dock 主题」是给开发者看的注解，
+		// 摆在标题旁边会读成「这里可以点」，去掉后头部干净、也和二级页的页头同构。
+		TextBlock header = Label("控制中心", 15.0, FontWeights.SemiBold, TextBrush);
+		header.Margin = new Thickness(2.0, 0.0, 2.0, 12.0);
 		body.Children.Add(header);
 
 		Grid tiles = new Grid
 		{
-			Margin = new Thickness(0.0, 4.0, 0.0, 0.0)
+			Margin = new Thickness(0.0, 2.0, 0.0, 0.0)
 		};
 		tiles.ColumnDefinitions.Add(new ColumnDefinition());
 		tiles.ColumnDefinitions.Add(new ColumnDefinition());
@@ -378,6 +447,8 @@ public class ControlCenterWindow : GlassWindow
 		{
 			ShowPage(1);
 		});
+		// 两格之间留 9px 缝：去掉边框后，靠缝而不是线来分开两块。
+		wifiTile.Margin = new Thickness(0.0, 0.0, 9.0, 0.0);
 		Grid.SetColumn(wifiTile, 0);
 		tiles.Children.Add(wifiTile);
 		btTile = BuildTile("bluetooth", "蓝牙", out btIconHost, out btStatus, (object s, MouseButtonEventArgs e) =>
@@ -485,6 +556,7 @@ public class ControlCenterWindow : GlassWindow
 			BorderThickness = new Thickness(0.0),
 			Cursor = Cursors.Hand
 		};
+		muteButton = muteBtn;
 		muteIcon = new System.Windows.Controls.ContentControl
 		{
 			Content = IconPacks.Glyph("volume", C.Prefs.Dock.IconPack, C.Prefs.Dock.Accent, TextBrush, 20.0),
@@ -493,6 +565,8 @@ public class ControlCenterWindow : GlassWindow
 			IsHitTestVisible = false
 		};
 		muteBtn.Content = muteIcon;
+		// 不给模板时 WPF 会画一颗默认灰圆底，在卡片里像一块污渍；ghost 模板只在悬停时浮一层浅底。
+		muteBtn.Style = Polish.ButtonStyle(LightTheme, "ghost");
 		muteBtn.Click += (object s, RoutedEventArgs e) =>
 		{
 			muted = !muted;
@@ -555,12 +629,14 @@ public class ControlCenterWindow : GlassWindow
 		outputGrid.ColumnDefinitions.Add(new ColumnDefinition());
 		outputSection.Child = outputGrid;
 		outputGrid.Children.Add(Label("输出设备", 12.5, FontWeights.SemiBold, TextBrush));
+		// 输出设备做成右侧的一行「值 ›」：原来是一个横贯整块的灰药丸，比音量本身还重。
 		outputButton = new Button
 		{
-			Height = 30.0,
+			Height = 26.0,
 			Margin = new Thickness(12.0, 0.0, 0.0, 0.0),
-			HorizontalContentAlignment = System.Windows.HorizontalAlignment.Left,
-			Padding = new Thickness(10.0, 0.0, 10.0, 0.0),
+			HorizontalAlignment = System.Windows.HorizontalAlignment.Right,
+			HorizontalContentAlignment = System.Windows.HorizontalAlignment.Right,
+			Padding = new Thickness(8.0, 0.0, 6.0, 0.0),
 			Cursor = Cursors.Hand
 		};
 		outputButton.Click += (object s, RoutedEventArgs e) =>
@@ -819,8 +895,8 @@ public class ControlCenterWindow : GlassWindow
 	{
 		Border card = new Border
 		{
-			CornerRadius = new CornerRadius(Math.Max(4.0, innerRadius * 0.8)),
-			Padding = new Thickness(8.0, 6.0, 8.0, 6.0),
+			CornerRadius = new CornerRadius(Math.Max(6.0, innerRadius * 0.9)),
+			Padding = new Thickness(6.0, 9.0, 6.0, 8.0),
 			Margin = new Thickness(2.0, 0.0, 2.0, 0.0),
 			Background = System.Windows.Media.Brushes.Transparent,
 			BorderThickness = new Thickness(0.0),
@@ -834,16 +910,16 @@ public class ControlCenterWindow : GlassWindow
 		};
 		ContentControl icon = new ContentControl
 		{
-			Content = IconPacks.Glyph(kind, C.Prefs.Dock.IconPack, C.Prefs.Dock.Accent, TextBrush, 24.0),
-			Width = 24.0,
-			Height = 24.0,
+			Content = IconPacks.Glyph(kind, C.Prefs.Dock.IconPack, C.Prefs.Dock.Accent, TextBrush, 22.0),
+			Width = 22.0,
+			Height = 22.0,
 			HorizontalAlignment = System.Windows.HorizontalAlignment.Center,
 			IsHitTestVisible = false
 		};
 		stack.Children.Add(icon);
-		TextBlock name = Label(title, 13.0, FontWeights.SemiBold, TextBrush);
+		TextBlock name = Label(title, 12.0, FontWeights.Normal, MutedBrush);
 		name.HorizontalAlignment = System.Windows.HorizontalAlignment.Center;
-		name.Margin = new Thickness(0.0, 5.0, 0.0, 0.0);
+		name.Margin = new Thickness(0.0, 6.0, 0.0, 0.0);
 		stack.Children.Add(name);
 		card.Child = stack;
 		card.MouseEnter += (object s, System.Windows.Input.MouseEventArgs e) =>
@@ -889,6 +965,11 @@ public class ControlCenterWindow : GlassWindow
 
 	public void ClosePanel()
 	{
+		// Dock 收起时会把控制中心一起收掉；开发期截图需要它一直挂着，故在调试开关下忽略。
+		if (DebugKeepOpen)
+		{
+			return;
+		}
 		if (closing || !IsVisible)
 		{
 			return;
