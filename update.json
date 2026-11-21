@@ -1,11 +1,11 @@
 {
-  "version": "1.0.37",
+  "version": "1.0.38",
   "released": "2026-11-21",
-  "notes": "外观向苹果 Liquid Glass 靠拢：玻璃口改为方向性镜面边（左上迎光、右下淡反射）、表面加一层透光、模糊下限提到 18、深色玻璃底色更中性并掺入 16% 强调色、窗口阴影改为更柔的环境光；Dock 图标按下即有 95.5% 即时缩放反馈；高对比度主题下自动退回不透明表面。",
-  "installer": "https://github.com/FlowerSea111222/IconBox/releases/download/v1.0.37/IconBox-Setup-1.0.37.exe",
-  "portable": "https://github.com/FlowerSea111222/IconBox/releases/download/v1.0.37/IconBox_v1.0.37_User.zip",
+  "notes": "设置界面改成 macOS 系统设置的样子：侧边栏用彩色图标块（选中只铺 12% 强调色软底，不再整行变蓝、去掉蓝色投影），分组卡片收成 12px 圆角 + 发丝边不再投阴影，行间加淡淡的发丝分隔线；下拉框与按钮改成白底 + 发丝边，复选框缩到 16px 圆角、开关沿用 iOS 样式；「重要提示」页也补齐图标块，页内卡片与其它页统一。",
+  "installer": "https://github.com/FlowerSea111222/IconBox/releases/download/v1.0.38/IconBox-Setup-1.0.38.exe",
+  "portable": "https://github.com/FlowerSea111222/IconBox/releases/download/v1.0.38/IconBox_v1.0.38_User.zip",
   "sha256": {
-    "installer": "1EE58BE23AEFC43071773D1629D3E8DC94DC20CF1F71A89F439B0F6E4DF6CD9F",
-    "portable": "F38F7347DA18E69B32146D6E00D7CBC947101ABF68E7C2B28F1A7C4DD6F9618B"
+    "installer": "74f7f3b3a29404071b17ea45b12874a8352bf4b7d1d43fd8956a9ec364ec4cbe",
+    "portable": "db5178f8f1522f2e88611c730f64db9d9cdb0d54c5e696becbd2fbda4d7eecff"
   }
 }
