@@ -265,13 +265,15 @@ public class GlassWindow : Window
 	{
 		get
 		{
+			// 苹果的玻璃材质都有一个明显的模糊下限：低于它就不是「磨砂玻璃」，只是半透明色块。
+			// 用户把「玻璃模糊」调到很低时仍然保留 AppleGlass.MinBlur（类型 1 的薄纱层除外）。
 			if (CurrentMaterial.Kind != 1)
 			{
 				if (CurrentMaterial.Kind != 2)
 				{
-					return BlurRadius;
+					return Math.Max(AppleGlass.MinBlur, BlurRadius);
 				}
-				return Math.Min(40.0, BlurRadius * 1.3);
+				return Math.Max(AppleGlass.MinBlur, Math.Min(40.0, BlurRadius * 1.3));
 			}
 			return BlurRadius * 0.25;
 		}
@@ -504,7 +506,7 @@ public class GlassWindow : Window
 	{
 		LightTheme = light;
 		SetGlassOpacity(GlassPercent);
-		Surface.BorderBrush = ((GlassPercent == 0.0) ? ((System.Windows.Media.Brush)System.Windows.Media.Brushes.Transparent) : ((System.Windows.Media.Brush)new LinearGradientBrush(System.Windows.Media.Color.FromArgb((byte)Math.Min(255.0, 145.0 * EdgeStrength), byte.MaxValue, byte.MaxValue, byte.MaxValue), System.Windows.Media.Color.FromArgb((byte)Math.Min(255.0, 35.0 * EdgeStrength), byte.MaxValue, byte.MaxValue, byte.MaxValue), 90.0)));
+		Surface.BorderBrush = ((GlassPercent == 0.0) ? ((System.Windows.Media.Brush)System.Windows.Media.Brushes.Transparent) : AppleGlass.Rim(light, EdgeStrength));
 		if (IsVisible)
 		{
 			RefreshBackdropStyle();
@@ -745,14 +747,25 @@ public class GlassWindow : Window
 			surfaceShadow = Tokens.WindowShadow();
 		}
 		Surface.Background = GlassMaterials.Fill(CurrentMaterial, LightTheme, GlassPercent, AccentIndex);
-		Surface.BorderBrush = ((GlassPercent == 0.0) ? System.Windows.Media.Brushes.Transparent : Polish.Line(LightTheme));
+		// 苹果式玻璃口：左上迎光最亮、右下只剩一道细淡反射，再往下过渡（旧的单向 145→35 白边像塑料膜）。
+		Surface.BorderBrush = ((GlassPercent == 0.0) ? System.Windows.Media.Brushes.Transparent : AppleGlass.Rim(LightTheme, EdgeStrength));
 		Surface.Effect = ((GlassPercent == 0.0 || !CurrentMaterial.Shadow || SlowRender || !UsesWindowShadow()) ? null : surfaceShadow);
+		if (SystemParameters.HighContrast)
+		{
+			// 高对比度主题：玻璃是会「吃掉对比度」的材质，这里退回不透明表面 + 实线边框，
+			// 保证文字与焦点框在系统辅助功能设置下仍然清晰（苹果的「提高对比度」也是同样处理）。
+			Surface.Background = Tokens.Surface(LightTheme);
+			Surface.BorderBrush = Polish.Line(LightTheme);
+			Surface.Effect = null;
+		}
 		foreach (Border item in from b in Root.Children.OfType<Border>()
 			where b.Tag as string == "backdrop"
 			select b)
 		{
 			item.Opacity = GlassPercent / 100.0;
 		}
+		if (!SystemParameters.HighContrast)
+		{
 		Border border = Root.Children.OfType<Border>().FirstOrDefault((Border b) => b.Tag as string == "material");
 		if (border == null)
 		{
@@ -773,6 +786,17 @@ public class GlassWindow : Window
 				CornerRadius = Surface.CornerRadius,
 				Background = new LinearGradientBrush(System.Windows.Media.Color.FromArgb((byte)Math.Round(CurrentMaterial.Gloss * 90.0), byte.MaxValue, byte.MaxValue, byte.MaxValue), Colors.Transparent, 90.0)
 			});
+			// 顶部再压一层很薄的透光（Liquid Glass 的「厚度感」来自这层内侧高光，而不是整体加白）。
+			if (!SystemParameters.HighContrast)
+			{
+				grid.Children.Add(new Border
+				{
+					CornerRadius = Surface.CornerRadius,
+					IsHitTestVisible = false,
+					Background = AppleGlass.Sheen(LightTheme),
+					Opacity = Math.Min(0.85, 0.35 + CurrentMaterial.Gloss)
+				});
+			}
 		}
 		if (CurrentMaterial.Grain > 0.0)
 		{
@@ -787,6 +811,16 @@ public class GlassWindow : Window
 				},
 				Opacity = CurrentMaterial.Grain
 			});
+		}
+		}
+		else
+		{
+			// 高对比度下移除材质叠层，避免光泽/颗粒降低文字对比度。
+			Border stale = Root.Children.OfType<Border>().FirstOrDefault((Border b) => b.Tag as string == "material");
+			if (stale != null)
+			{
+				Root.Children.Remove(stale);
+			}
 		}
 	}
 
