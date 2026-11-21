@@ -1,11 +1,11 @@
 {
-  "version": "1.0.40",
+  "version": "1.0.41",
   "released": "2026-11-21",
-  "notes": "设置界面左侧导航的图标与文字现在都从同一条左基线开始：每个页签铺满侧边栏宽度，不再按文字长短各自居中；「重要提示」这页原本多留了 10px 左边距，也一并清掉。",
-  "installer": "IconBox-Setup-1.0.40.exe",
-  "portable": "IconBox_v1.0.40_User.zip",
+  "notes": "修复点击 Dock 上正在运行的应用「没反应」的问题：窗口最小化或被隐藏时，此前会被「已在前台」的判断吞掉，现在会真正把它还原到前台；已经在前台可见时依然什么都不做（不抢焦点、不最小化）。",
+  "installer": "IconBox-Setup-1.0.41.exe",
+  "portable": "IconBox_v1.0.41_User.zip",
   "sha256": {
-    "installer": "DEA12EEA1DB81D3D98B245CE6A4145749A2B10DE7DE3A9834D36BB73A6ED2F99",
-    "portable": "A5EC86FEA02328A17260D43CF0E9832AC260F75B40DEDC741A1C75997F6C1B2D"
+    "installer": "03EC4B9689900706234EFACDE8A7A3F593F0F98F3610B73A0F94F47F22645234",
+    "portable": "350D571B82AF33D910A105F1779FF9323EA41CC251B78753F14684C1F80F9181"
   }
 }
