@@ -61,6 +61,7 @@ public static class UpdateNotice
 		});
 		TabItem item = new TabItem
 		{
+			HorizontalAlignment = System.Windows.HorizontalAlignment.Stretch,
 			HorizontalContentAlignment = System.Windows.HorizontalAlignment.Stretch,
 			Header = noticeHeader,
 			Content = scroll,
