@@ -1,0 +1,79 @@
+{
+  "$schema": "urn:edithere:image-set-feedback:1",
+  "schemaVersion": "image-set-feedback-1",
+  "tool": {
+    "name": "EditHere",
+    "version": "0.13.7"
+  },
+  "exportedAt": "2026-11-20T09:19:45.635Z",
+  "annotationSpace": "result",
+  "set": {
+    "name": "IconBox 启动台",
+    "pageCount": 1,
+    "annotatedPageCount": 1
+  },
+  "pageIndex": [
+    {
+      "id": "p-c67425274800",
+      "name": "panel-after",
+      "index": 1,
+      "width": 1470,
+      "height": 930,
+      "annotated": true,
+      "imageFile": "images/page-1-panel-after.png",
+      "annotatedImage": "images/page-1-panel-after-annotated.png"
+    }
+  ],
+  "pages": [
+    {
+      "id": "p-c67425274800",
+      "name": "panel-after",
+      "index": 1,
+      "width": 1470,
+      "height": 930,
+      "imageFile": "images/page-1-panel-after.png",
+      "feedback": {
+        "schemaVersion": "feedback-minimal-4",
+        "tool": {
+          "name": "EditHere",
+          "version": "0.13.7"
+        },
+        "annotationSpace": "result",
+        "image": {
+          "mode": "none",
+          "mimeType": "image/png",
+          "width": 1470,
+          "height": 930,
+          "devicePixelRatio": null,
+          "sha256": "b709d1b79f232875f910e0db05d4e532dd8efe2b4c72fb47b0fe3ac5a5506601"
+        },
+        "objects": [
+          {
+            "annotations": [
+              {
+                "number": 1,
+                "text": "图标风格尽量简约一点，调用skill，至少线条粗细要一样"
+              }
+            ],
+            "kind": "region",
+            "source": {
+              "x1": 252,
+              "y1": 790,
+              "x2": 1224,
+              "y2": 881
+            },
+            "id": "o1"
+          }
+        ]
+      },
+      "annotatedImage": "images/page-1-panel-after-annotated.png"
+    }
+  ],
+  "groupNotes": [],
+  "dsh": {
+    "sessionId": "05088e6f4a67bbc5273ec1736b00e936",
+    "name": "IconBox 启动台",
+    "output": "C:\\Users\\13793\\Documents\\deepseek-harness\\default-workspace\\iconbox\\.edithere\\feedback-1.json",
+    "instruction": "Only pages in pages[] are annotated. Read each annotatedImage and sourceImage; pageIndex lists context pages without images. Apply the feedback to the product and report which files changed."
+  }
+}
