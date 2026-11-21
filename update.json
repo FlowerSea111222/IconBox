@@ -1,11 +1,11 @@
 {
-  "version": "1.0.38",
+  "version": "1.0.39",
   "released": "2026-11-21",
-  "notes": "设置界面改成 macOS 系统设置的样子：侧边栏用彩色图标块（选中只铺 12% 强调色软底，不再整行变蓝、去掉蓝色投影），分组卡片收成 12px 圆角 + 发丝边不再投阴影，行间加淡淡的发丝分隔线；下拉框与按钮改成白底 + 发丝边，复选框缩到 16px 圆角、开关沿用 iOS 样式；「重要提示」页也补齐图标块，页内卡片与其它页统一。",
-  "installer": "https://github.com/FlowerSea111222/IconBox/releases/download/v1.0.38/IconBox-Setup-1.0.38.exe",
-  "portable": "https://github.com/FlowerSea111222/IconBox/releases/download/v1.0.38/IconBox_v1.0.38_User.zip",
+  "notes": "设置界面按苹果系统设置的观感重做：侧边栏改为彩色图标块 + 文字，选中只保留一层淡淡的强调色软底，去掉了原来的蓝色投影；内容区卡片改成平面 + 发丝边，行与行之间补了细分隔线；侧边栏图标统一到同一尺寸并居中，其中「重要提示」的圆形信息图标之前因为残留了右边距而偏左，这次修好；六类设置页的卡片左右边界现在完全对齐。",
+  "installer": "IconBox-Setup-1.0.39.exe",
+  "portable": "IconBox_v1.0.39_User.zip",
   "sha256": {
-    "installer": "74f7f3b3a29404071b17ea45b12874a8352bf4b7d1d43fd8956a9ec364ec4cbe",
-    "portable": "db5178f8f1522f2e88611c730f64db9d9cdb0d54c5e696becbd2fbda4d7eecff"
+    "installer": "92214796CB0486E9024BFAE8B68F23F31611FF471577DE1BED77B21F14FA68E1",
+    "portable": "037947C4C8B843C8A2D64ADD733AF994223F62260028CFF0135DE9E5D52AD90E"
   }
 }
