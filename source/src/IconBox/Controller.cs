@@ -189,7 +189,7 @@ public class Controller
 		glassSuppressed = Prefs.GameMode || (Prefs.AutoGameMode && FullscreenState.Active());
 		Tray = new NotifyIcon
 		{
-			Text = "IconBox v1.0.37 · 玻璃启动台",
+			Text = "IconBox v1.0.38 · 玻璃启动台",
 			Icon = (Icon.ExtractAssociatedIcon(Assembly.GetExecutingAssembly().Location) ?? SystemIcons.Application),
 			Visible = true
 		};
@@ -1871,7 +1871,7 @@ public class Controller
 			bool settingsLight = Prefs.Light;
 			Window w = new Window
 			{
-				Title = "IconBox · 个性化与控制 v1.0.37",
+				Title = "IconBox · 个性化与控制 v1.0.38",
 				Width = Math.Min(940.0, SystemParameters.WorkArea.Width - 40.0),
 				Height = Math.Min(790.0, SystemParameters.WorkArea.Height - 50.0),
 				MinWidth = 560.0,
@@ -1947,6 +1947,33 @@ public class Controller
 			Grid.SetColumnSpan(tabs, 2);
 			grid.Children.Add(tabs);
 			settingsTabs = tabs;
+			// 侧边栏图标块的分区色：macOS 系统设置用彩色方块区分分区，这里按标签页顺序取用。
+			System.Windows.Media.Color[] navHues = new System.Windows.Media.Color[7]
+			{
+				System.Windows.Media.Color.FromRgb(0x8E, 0x8E, 0x93),
+				System.Windows.Media.Color.FromRgb(0x0A, 0x84, 0xFF),
+				System.Windows.Media.Color.FromRgb(0x5E, 0x5C, 0xE6),
+				System.Windows.Media.Color.FromRgb(0xFF, 0x9F, 0x0A),
+				System.Windows.Media.Color.FromRgb(0xBF, 0x5A, 0xF2),
+				System.Windows.Media.Color.FromRgb(0x30, 0xD1, 0x58),
+				System.Windows.Media.Color.FromRgb(0x64, 0xD2, 0xFF)
+			};
+			int navIndex = 0;
+			// 行间发丝分隔线：苹果系统设置的分组里，每行之间有一条左右内缩的细线，而不是整块留白。
+			Action<StackPanel> beforeRow = delegate(StackPanel panel)
+			{
+				if (panel != null && panel.Children.Count > 2)
+				{
+					panel.Children.Add(new Border
+					{
+						Height = 1.0,
+						Background = Tokens.Separator(settingsLight),
+						Opacity = 0.55,
+						Margin = new Thickness(0.0, 6.0, 0.0, 6.0),
+						SnapsToDevicePixels = true
+					});
+				}
+			};
 			Func<string, string, StackPanel> func = (string heading, string icon) =>
 			{
 				Border border = Polish.Section(heading, "调整即时生效并自动保存，关闭窗口不会丢失。", settingsLight);
@@ -1957,15 +1984,28 @@ public class Controller
 					Margin = new Thickness(24.0, 14.0, 26.0, 8.0)
 				};
 				stackPanel11.Children.Add(border);
-				// 侧边栏导航项：图标 + 文字，选中态为强调色胶囊（由 TabItem 样式提供）。
+				// 侧边栏导航项：彩色图标块 + 文字（macOS 系统设置观感），选中态由 TabItem 样式提供。
 				StackPanel navHeader = new StackPanel
 				{
 					Orientation = System.Windows.Controls.Orientation.Horizontal
 				};
-				FrameworkElement navIcon = Polish.Icon(icon, Tokens.LabelSecondary(settingsLight), 18.0);
-				navIcon.Margin = new Thickness(0.0, 0.0, 11.0, 0.0);
+				Border navTile = new Border
+				{
+					Width = 22.0,
+					Height = 22.0,
+					CornerRadius = new CornerRadius(6.0),
+					Background = new SolidColorBrush(navHues[navIndex % navHues.Length]),
+					Margin = new Thickness(0.0, 0.0, 10.0, 0.0),
+					VerticalAlignment = VerticalAlignment.Center,
+					SnapsToDevicePixels = true
+				};
+				FrameworkElement navIcon = Polish.Icon(icon, System.Windows.Media.Brushes.White, 13.0);
+				navIcon.HorizontalAlignment = System.Windows.HorizontalAlignment.Center;
 				navIcon.VerticalAlignment = VerticalAlignment.Center;
-				navHeader.Children.Add(navIcon);
+				navTile.Child = navIcon;
+				navTile.Tag = "nav-tile";
+				navHeader.Children.Add(navTile);
+				navIndex++;
 				navHeader.Children.Add(new TextBlock
 				{
 					Text = heading,
@@ -2102,36 +2142,124 @@ public class Controller
 			feedbackButtons.Children.Add(feedbackOpen);
 			feedbackButtons.Children.Add(feedbackCopy);
 			feedbackPage.Children.Add(feedbackButtons);
-			// 侧边栏图标随选中态换色：选中为白色，未选中为次要文字色（原先图标恒灰，与白字不协调）。
-			Action paintNavIcons = delegate
-			{
-				foreach (object navItemObject in tabs.Items)
-				{
-					TabItem navItem = navItemObject as TabItem;
-					if (navItem == null)
-					{
-						continue;
-					}
-					FrameworkElement navGlyph = navItem.Tag as FrameworkElement;
-					if (navGlyph == null)
-					{
-						continue;
-					}
-					System.Windows.Media.Brush navInk = navItem.IsSelected ? System.Windows.Media.Brushes.White : Tokens.LabelSecondary(settingsLight);
-					System.Windows.Shapes.Path navPath = navGlyph as System.Windows.Shapes.Path;
-					if (navPath != null)
-					{
-						navPath.Fill = navInk;
-						continue;
-					}
-					TextBlock navText = navGlyph as TextBlock;
-					if (navText != null)
-					{
-						navText.Foreground = navInk;
-					}
-				}
-			};
+            // 侧边栏图标块：彩色方块里的 glyph 恒为白色（macOS 系统设置不随选中变色），
+            // 选中反馈交给 TabItem 模板里的 12% 强调色软底。
+            // 走 func() 之外的页面（如「重要提示」）由 UpdateNotice 自行插入，这里补一次规整，
+            // 让每个页面都有同样大小的彩色方块。
+            Action normalizeNavTiles = delegate
+            {
+                foreach (object navItemObject in tabs.Items)
+                {
+                    TabItem navItem = navItemObject as TabItem;
+                    if (navItem == null)
+                    {
+                        continue;
+                    }
+                    StackPanel navHeader = navItem.Header as StackPanel;
+                    if (navHeader == null)
+                    {
+                        continue;
+                    }
+                    bool navTiled = false;
+                    foreach (object navChild in navHeader.Children)
+                    {
+                        Border navTile = navChild as Border;
+                        if (navTile != null && object.Equals(navTile.Tag, "nav-tile"))
+                        {
+                            navTiled = true;
+                            break;
+                        }
+                    }
+                    if (navTiled)
+                    {
+                        continue;
+                    }
+                    FrameworkElement navGlyph = navItem.Tag as FrameworkElement;
+                    if (navGlyph == null)
+                    {
+                        continue;
+                    }
+                    StackPanel navParent = navGlyph.Parent as StackPanel;
+                    if (navParent != null)
+                    {
+                        navParent.Children.Remove(navGlyph);
+                    }
+                    else if (navHeader.Children.Contains(navGlyph))
+                    {
+                        navHeader.Children.Remove(navGlyph);
+                    }
+                    navGlyph.Width = 13.0;
+                    navGlyph.Height = 13.0;
+                    navGlyph.HorizontalAlignment = System.Windows.HorizontalAlignment.Center;
+                    navGlyph.VerticalAlignment = System.Windows.VerticalAlignment.Center;
+                    Border navTileBox = new Border
+                    {
+                        Width = 22.0,
+                        Height = 22.0,
+                        CornerRadius = new CornerRadius(6.0),
+                        Background = new SolidColorBrush(navHues[navIndex % navHues.Length]),
+                        Margin = new Thickness(0.0, 0.0, 10.0, 0.0),
+                        VerticalAlignment = System.Windows.VerticalAlignment.Center,
+                        SnapsToDevicePixels = true,
+                        Tag = "nav-tile",
+                        Child = navGlyph
+                    };
+                    navHeader.Children.Insert(0, navTileBox);
+                    navIndex++;
+                }
+            };
+            Action paintNavIcons = delegate
+            {
+                foreach (object navItemObject in tabs.Items)
+                {
+                    TabItem navItem = navItemObject as TabItem;
+                    if (navItem == null)
+                    {
+                        continue;
+                    }
+                    FrameworkElement navGlyph = navItem.Tag as FrameworkElement;
+                    if (navGlyph == null)
+                    {
+                        continue;
+                    }
+                    bool navTiled = false;
+                    StackPanel navHeader = navItem.Header as StackPanel;
+                    if (navHeader != null)
+                    {
+                        foreach (object navChild in navHeader.Children)
+                        {
+                            Border navTile = navChild as Border;
+                            if (navTile != null && object.Equals(navTile.Tag, "nav-tile"))
+                            {
+                                navTiled = true;
+                                break;
+                            }
+                        }
+                    }
+                    System.Windows.Media.Brush navInk = (navTiled ? System.Windows.Media.Brushes.White : (navItem.IsSelected ? Tokens.Label(settingsLight) : Tokens.LabelSecondary(settingsLight)));
+                    System.Windows.Shapes.Path navPath = navGlyph as System.Windows.Shapes.Path;
+                    if (navPath != null)
+                    {
+                        // 轮廓图标只有 Stroke、实心图标只有 Fill；两边都设会把轮廓灌成一个白团。
+                        if (navPath.Stroke != null)
+                        {
+                            navPath.Stroke = navInk;
+                        }
+                        else
+                        {
+                            navPath.Fill = navInk;
+                        }
+                        continue;
+                    }
+                    TextBlock navText = navGlyph as TextBlock;
+                    if (navText != null)
+                    {
+                        navText.Foreground = navInk;
+                    }
+                }
+            };
 			UpdateNotice.Build(tabs);
+            normalizeNavTiles();
 			tabs.SelectedIndex = Math.Max(0, Math.Min(6, selectedPage));
 			tabs.SelectionChanged += (object navSender, SelectionChangedEventArgs navArgs) => paintNavIcons();
 			paintNavIcons();
@@ -2160,6 +2288,7 @@ public class Controller
 			};
 			Func<StackPanel, string, double, double, double, double, string, Action<double>, Slider> func2 = (StackPanel panel, string label, double min, double max, double value3, double tick, string unit, Action<double> change) =>
 			{
+				beforeRow(panel);
 				TextBlock caption = new TextBlock
 				{
 					Text = label + "  " + value3.ToString("0.##") + unit,
@@ -2186,6 +2315,7 @@ public class Controller
 			};
 			Func<StackPanel, string, bool, Action<bool>, System.Windows.Controls.CheckBox> func3 = (StackPanel panel, string label, bool value3, Action<bool> change) =>
 			{
+				beforeRow(panel);
 				// iOS 开关行：左侧说明文字（长文案可换行）+ 右侧拨杆，替代原来的方块复选框。
 				System.Windows.Controls.CheckBox checkBox = new System.Windows.Controls.CheckBox
 				{
@@ -2215,6 +2345,7 @@ public class Controller
 			};
 			Func<StackPanel, string, string[], int, Action<int>, System.Windows.Controls.ComboBox> func4 = (StackPanel panel, string label, string[] items, int selectedIndex, Action<int> change) =>
 			{
+				beforeRow(panel);
 				panel.Children.Add(new TextBlock
 				{
 					Text = label,
