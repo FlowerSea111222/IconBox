@@ -189,7 +189,7 @@ public class Controller
 		glassSuppressed = Prefs.GameMode || (Prefs.AutoGameMode && FullscreenState.Active());
 		Tray = new NotifyIcon
 		{
-			Text = "IconBox v1.0.38 · 玻璃启动台",
+			Text = "IconBox v1.0.39 · 玻璃启动台",
 			Icon = (Icon.ExtractAssociatedIcon(Assembly.GetExecutingAssembly().Location) ?? SystemIcons.Application),
 			Visible = true
 		};
@@ -1871,7 +1871,7 @@ public class Controller
 			bool settingsLight = Prefs.Light;
 			Window w = new Window
 			{
-				Title = "IconBox · 个性化与控制 v1.0.38",
+				Title = "IconBox · 个性化与控制 v1.0.39",
 				Width = Math.Min(940.0, SystemParameters.WorkArea.Width - 40.0),
 				Height = Math.Min(790.0, SystemParameters.WorkArea.Height - 50.0),
 				MinWidth = 560.0,
@@ -1999,7 +1999,7 @@ public class Controller
 					VerticalAlignment = VerticalAlignment.Center,
 					SnapsToDevicePixels = true
 				};
-				FrameworkElement navIcon = Polish.Icon(icon, System.Windows.Media.Brushes.White, 13.0);
+				FrameworkElement navIcon = Polish.Icon(icon, System.Windows.Media.Brushes.White, 12.0);
 				navIcon.HorizontalAlignment = System.Windows.HorizontalAlignment.Center;
 				navIcon.VerticalAlignment = VerticalAlignment.Center;
 				navTile.Child = navIcon;
@@ -2013,11 +2013,12 @@ public class Controller
 				});
 				TabItem newItem = new TabItem
 				{
+					HorizontalContentAlignment = System.Windows.HorizontalAlignment.Stretch,
 					Header = navHeader,
 					Content = new ScrollViewer
 					{
 						Content = stackPanel11,
-						VerticalScrollBarVisibility = ScrollBarVisibility.Auto,
+						VerticalScrollBarVisibility = ScrollBarVisibility.Hidden,
 						HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled
 					}
 				};
@@ -2092,8 +2093,8 @@ public class Controller
 				}
 			};
 			refreshPreview();
-			StackPanel stackPanel4 = func("快捷键与开关", "control");
-			StackPanel stackPanel6 = func("通用", "sliders");
+			StackPanel stackPanel4 = func("快捷键与开关", "keyboard");
+			StackPanel stackPanel6 = func("通用", "settings");
 			StackPanel feedbackPage = func("在线反馈", "note");
 			feedbackPage.Children.Add(new TextBlock
 			{
@@ -2188,8 +2189,9 @@ public class Controller
                     {
                         navHeader.Children.Remove(navGlyph);
                     }
-                    navGlyph.Width = 13.0;
-                    navGlyph.Height = 13.0;
+                    navGlyph.Margin = new Thickness(0.0);
+                    navGlyph.Width = 12.0;
+                    navGlyph.Height = 12.0;
                     navGlyph.HorizontalAlignment = System.Windows.HorizontalAlignment.Center;
                     navGlyph.VerticalAlignment = System.Windows.VerticalAlignment.Center;
                     Border navTileBox = new Border
