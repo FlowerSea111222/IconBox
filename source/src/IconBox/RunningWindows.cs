@@ -1454,9 +1454,19 @@ public static class RunningWindows
 				Store.Trace("ACTIVATE raise below hwnd=" + below.ToInt64());
 				return ActivateHandle(below);
 			}
-			// 问卷 Q11.2：目标应用已经在前台时点图标 = 什么都不做（不再像任务栏那样最小化）。
-			Store.Trace("ACTIVATE already foreground, do nothing");
-			return true;
+			// 问卷 Q11.2：目标应用真正在前台且可见时点图标 = 什么都不做（不再像任务栏那样最小化）。
+			// 但最小化 / 被隐藏的窗口也可能被记为“前台”（Dock 按下时记录的 pressForeground 兜底），
+			// 这种情况必须还原，否则用户点了图标会觉得“没反应”。
+			if (IsWindowVisible(foregroundWindow) && !IsIconic(foregroundWindow))
+			{
+				Store.Trace("ACTIVATE already foreground, do nothing");
+				return true;
+			}
+			Store.Trace("ACTIVATE foreground hidden or iconic, restore hwnd=" + foregroundWindow.ToInt64());
+			if (ActivateHandle(foregroundWindow))
+			{
+				return true;
+			}
 		}
 		if (list.Count == 0)
 		{
