@@ -18,11 +18,12 @@ public static class GlassMaterials
 		if (string.IsNullOrEmpty(options.Tint))
 		{
 			// 深色玻璃底色：原先 (24,26,32) 偏黑，用户反馈 Dock 毛玻璃「太黑」。
-			// 提亮到中性炭灰 (46,50,60)，配合 12% 强调色掺入，观感更接近 macOS 的磨砂玻璃而非纯黑。
-			color = (light ? Color.FromRgb(234, 237, 244) : Color.FromRgb(46, 50, 60));
-			// "跟随强调色"：把强调色以 12% 掺入玻璃底色（与菜单同源思路），切换强调色时玻璃可见变化
+			// 苹果的深色玻璃是「中性灰 + 一点环境色」，不是黑：底色提亮到 (52,56,66)，
+			// 再掺 16% 强调色，透出来的墙纸色会更接近 macOS 的深色材质而不是墨块。
+			color = (light ? Color.FromRgb(234, 237, 244) : Color.FromRgb(52, 56, 66));
+			// "跟随强调色"：把强调色以 16% 掺入玻璃底色（与菜单同源思路），切换强调色时玻璃可见变化
 			Color accentColor = IconPacks.AccentColor(accent);
-			color = Color.FromRgb((byte)((double)color.R + ((double)(int)accentColor.R - (double)color.R) * 0.12), (byte)((double)color.G + ((double)(int)accentColor.G - (double)color.G) * 0.12), (byte)((double)color.B + ((double)(int)accentColor.B - (double)color.B) * 0.12));
+			color = Color.FromRgb((byte)((double)color.R + ((double)(int)accentColor.R - (double)color.R) * 0.16), (byte)((double)color.G + ((double)(int)accentColor.G - (double)color.G) * 0.16), (byte)((double)color.B + ((double)(int)accentColor.B - (double)color.B) * 0.16));
 		}
 		else
 		{
@@ -31,7 +32,20 @@ public static class GlassMaterials
 		color.A = (byte)Math.Round(percent * 255.0 / 100.0);
 		if (options.Kind != 3 && options.Kind != 1)
 		{
-			return new SolidColorBrush(color);
+			// 纯色玻璃也带一点自上而下的透光（顶部略亮、底部回到本色），
+			// 苹果的玻璃「看起来有厚度」靠的正是这点极小的竖向亮度差，而不是加白边。
+			if (color.A < 8)
+			{
+				return new SolidColorBrush(color);
+			}
+			Color topColor = color;
+			int lift = light ? 6 : 10;
+			topColor.R = (byte)Math.Min(255, topColor.R + lift);
+			topColor.G = (byte)Math.Min(255, topColor.G + lift);
+			topColor.B = (byte)Math.Min(255, topColor.B + lift);
+			LinearGradientBrush sheen = new LinearGradientBrush(topColor, color, 90.0);
+			sheen.Freeze();
+			return sheen;
 		}
 		Color startColor = color;
 		startColor.R = (byte)Math.Min(255, startColor.R + 35);
