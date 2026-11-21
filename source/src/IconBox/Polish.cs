@@ -141,15 +141,16 @@ public static class Polish
 				border = "Transparent";
 				break;
 			default:
-				bg = "@FILL";
-				hover = "@FILL2";
+				// 苹果的次要按钮是白底 + 发丝边，只有悬停/按下才铺灰。
+				bg = "@SURFACERAISED";
+				hover = "@FILL";
 				press = "@FILL2";
 				fg = "@LABEL";
-				border = "Transparent";
+				border = "@SEP";
 				break;
 		}
 		string xaml = "<ControlTemplate xmlns='http://schemas.microsoft.com/winfx/2006/xaml/presentation' TargetType='Button'>"
-			+ "<Border x:Name='Chrome' Background='" + bg + "' BorderBrush='" + border + "' BorderThickness='1' CornerRadius='" + Tokens.Radius.Card.ToString("0.##") + "' Padding='{TemplateBinding Padding}' SnapsToDevicePixels='True'>"
+			+ "<Border x:Name='Chrome' Background='" + bg + "' BorderBrush='" + border + "' BorderThickness='1' CornerRadius='8' Padding='{TemplateBinding Padding}' SnapsToDevicePixels='True'>"
 			+ "<ContentPresenter HorizontalAlignment='Center' VerticalAlignment='Center' RecognizesAccessKey='True'/></Border>"
 			+ "<ControlTemplate.Triggers>"
 			+ "<Trigger Property='IsMouseOver' Value='True'><Setter TargetName='Chrome' Property='Background' Value='" + hover + "'/></Trigger>"
@@ -161,11 +162,11 @@ public static class Polish
 		style.Setters.Add(new Setter(Control.ForegroundProperty, fg == "#FFFFFFFF" ? Brushes.White : (Brush)new BrushConverter().ConvertFromString(Pal(fg, light))));
 		style.Setters.Add(new Setter(Control.BackgroundProperty, Brushes.Transparent));
 		style.Setters.Add(new Setter(Control.BorderThicknessProperty, new Thickness(0.0)));
-		style.Setters.Add(new Setter(Control.PaddingProperty, new Thickness(14.0, 6.0, 14.0, 6.0)));
+		style.Setters.Add(new Setter(Control.PaddingProperty, new Thickness(14.0, 7.0, 14.0, 7.0)));
 		style.Setters.Add(new Setter(Control.FontSizeProperty, Tokens.Type.Body));
 		style.Setters.Add(new Setter(Control.FontWeightProperty, Tokens.Type.Medium));
 		style.Setters.Add(new Setter(FrameworkElement.CursorProperty, Cursors.Hand));
-		style.Setters.Add(new Setter(FrameworkElement.MinHeightProperty, 32.0));
+		style.Setters.Add(new Setter(FrameworkElement.MinHeightProperty, 30.0));
 		return style;
 	}
 
@@ -209,7 +210,7 @@ public static class Polish
 
 		// 文本框：填充式，无硬描边，聚焦时强调色细边。
 		string textBoxXaml = "<ControlTemplate xmlns='http://schemas.microsoft.com/winfx/2006/xaml/presentation' TargetType='TextBox'>"
-			+ "<Border x:Name='Chrome' Background='@FILL' BorderBrush='Transparent' BorderThickness='1' CornerRadius='" + Tokens.Radius.Control.ToString("0.##") + "' Padding='{TemplateBinding Padding}' SnapsToDevicePixels='True'>"
+			+ "<Border x:Name='Chrome' Background='@SURFACERAISED' BorderBrush='@SEP' BorderThickness='1' CornerRadius='" + Tokens.Radius.Control.ToString("0.##") + "' Padding='{TemplateBinding Padding}' SnapsToDevicePixels='True'>"
 			+ "<ScrollViewer x:Name='PART_ContentHost' VerticalAlignment='{TemplateBinding VerticalContentAlignment}'/>"
 			+ "</Border>"
 			+ "<ControlTemplate.Triggers>"
@@ -230,7 +231,7 @@ public static class Polish
 		// 下拉框
 		string comboXaml = "<ControlTemplate xmlns='http://schemas.microsoft.com/winfx/2006/xaml/presentation' xmlns:x='http://schemas.microsoft.com/winfx/2006/xaml' TargetType='ComboBox'>"
 			+ "<Grid>"
-			+ "<ToggleButton x:Name='PART_Toggle' Focusable='False' ClickMode='Press' Background='@FILL' BorderBrush='Transparent' BorderThickness='1' IsChecked='{Binding IsDropDownOpen, RelativeSource={RelativeSource TemplatedParent}, Mode=TwoWay}'>"
+			+ "<ToggleButton x:Name='PART_Toggle' Focusable='False' ClickMode='Press' Background='@SURFACERAISED' BorderBrush='@SEP' BorderThickness='1' IsChecked='{Binding IsDropDownOpen, RelativeSource={RelativeSource TemplatedParent}, Mode=TwoWay}'>"
 			+ "<ToggleButton.Template><ControlTemplate TargetType='ToggleButton'><Border x:Name='Chrome' Background='{TemplateBinding Background}' BorderBrush='{TemplateBinding BorderBrush}' BorderThickness='{TemplateBinding BorderThickness}' CornerRadius='" + Tokens.Radius.Control.ToString("0.##") + "'/></ControlTemplate></ToggleButton.Template>"
 			+ "</ToggleButton>"
 			+ "<ContentPresenter Content='{TemplateBinding SelectionBoxItem}' ContentTemplate='{TemplateBinding SelectionBoxItemTemplate}' Margin='12,0,32,0' VerticalAlignment='Center' IsHitTestVisible='False'/>"
@@ -241,8 +242,8 @@ public static class Polish
 			+ "<ScrollViewer MaxHeight='280' VerticalScrollBarVisibility='Auto'><ItemsPresenter/></ScrollViewer>"
 			+ "</Border></Popup></Grid>"
 			+ "<ControlTemplate.Triggers>"
-			+ "<Trigger Property='IsMouseOver' Value='True'><Setter TargetName='PART_Toggle' Property='Background' Value='@FILL2'/></Trigger>"
-			+ "<Trigger Property='IsDropDownOpen' Value='True'><Setter TargetName='PART_Toggle' Property='Background' Value='@FILL2'/></Trigger>"
+			+ "<Trigger Property='IsMouseOver' Value='True'><Setter TargetName='PART_Toggle' Property='Background' Value='@FILL'/></Trigger>"
+			+ "<Trigger Property='IsDropDownOpen' Value='True'><Setter TargetName='PART_Toggle' Property='Background' Value='@FILL'/></Trigger>"
 			+ "<Trigger Property='IsEnabled' Value='False'><Setter Property='Opacity' Value='0.4'/></Trigger>"
 			+ "</ControlTemplate.Triggers></ControlTemplate>";
 		Style combo = StyleOf(typeof(ComboBox), Template(comboXaml, light), light);
@@ -283,21 +284,20 @@ public static class Polish
 		listItem.Setters.Add(new Setter(FrameworkElement.MarginProperty, new Thickness(0.0, 1.0, 0.0, 1.0)));
 		w.Resources[typeof(ListBoxItem)] = listItem;
 
-		// 标签页：分段控件观感（选中项为抬起底色）
+		// 侧边栏导航项：macOS 系统设置的「软底 + 主色文字」，不是整块强调色胶囊。
+		// 强调色只以 12% 透明度铺在选中行上，图标本身用彩色方块承载，选中时不再整行变蓝。
 		string tabXaml = "<ControlTemplate xmlns='http://schemas.microsoft.com/winfx/2006/xaml/presentation' TargetType='TabItem'>"
-			+ "<Border x:Name='Chrome' Background='Transparent' CornerRadius='10' Padding='{TemplateBinding Padding}' SnapsToDevicePixels='True'>"
+			+ "<Border x:Name='Chrome' Background='Transparent' CornerRadius='7' Padding='{TemplateBinding Padding}' SnapsToDevicePixels='True'>"
 			+ "<ContentPresenter ContentSource='Header' HorizontalAlignment='Left' VerticalAlignment='Center'/></Border>"
 			+ "<ControlTemplate.Triggers>"
 			+ "<Trigger Property='IsMouseOver' Value='True'><Setter TargetName='Chrome' Property='Background' Value='@FILL'/></Trigger>"
-			+ "<Trigger Property='IsSelected' Value='True'><Setter TargetName='Chrome' Property='Background' Value='@ACCENT'/></Trigger>"
-			+ "<Trigger Property='IsSelected' Value='True'><Setter Property='Foreground' Value='#FFFFFFFF'/></Trigger>"
-			+ "<Trigger Property='IsSelected' Value='True'><Setter TargetName='Chrome' Property='Effect'>"
-			+ "<Setter.Value><DropShadowEffect BlurRadius='16' ShadowDepth='2' Direction='270' Opacity='0.28' Color='#FF0A84FF'/></Setter.Value></Setter></Trigger>"
+			+ "<Trigger Property='IsSelected' Value='True'><Setter TargetName='Chrome' Property='Background' Value='@ACCENT12'/></Trigger>"
+			+ "<Trigger Property='IsSelected' Value='True'><Setter Property='Foreground' Value='@LABEL'/></Trigger>"
 			+ "</ControlTemplate.Triggers></ControlTemplate>";
 		Style tab = StyleOf(typeof(TabItem), Template(tabXaml, light), light);
-		tab.Setters.Add(new Setter(Control.ForegroundProperty, Tokens.LabelSecondary(light)));
-		tab.Setters.Add(new Setter(Control.PaddingProperty, new Thickness(13.0, 10.0, 15.0, 10.0)));
-		tab.Setters.Add(new Setter(FrameworkElement.MarginProperty, new Thickness(0.0, 3.0, 0.0, 3.0)));
+		tab.Setters.Add(new Setter(Control.ForegroundProperty, Tokens.Label(light)));
+		tab.Setters.Add(new Setter(Control.PaddingProperty, new Thickness(9.0, 7.0, 11.0, 7.0)));
+		tab.Setters.Add(new Setter(FrameworkElement.MarginProperty, new Thickness(0.0, 1.0, 0.0, 1.0)));
 		tab.Setters.Add(new Setter(Control.HorizontalContentAlignmentProperty, HorizontalAlignment.Left));
 		tab.Setters.Add(new Setter(Control.FontWeightProperty, Tokens.Type.Medium));
 		tab.Setters.Add(new Setter(FrameworkElement.CursorProperty, Cursors.Hand));
@@ -334,8 +334,8 @@ public static class Polish
 		string checkXaml = "<ControlTemplate xmlns='http://schemas.microsoft.com/winfx/2006/xaml/presentation' xmlns:x='http://schemas.microsoft.com/winfx/2006/xaml' TargetType='CheckBox'>"
 			+ "<Grid Background='Transparent'>"
 			+ "<Grid.ColumnDefinitions><ColumnDefinition Width='Auto'/><ColumnDefinition Width='*'/></Grid.ColumnDefinitions>"
-			+ "<Border x:Name='Box' Width='18' Height='18' CornerRadius='6' Background='@FILL' BorderBrush='@SEP' BorderThickness='1' VerticalAlignment='Center' SnapsToDevicePixels='True'>"
-			+ "<Path x:Name='Mark' Data='M 2.5,6.5 L 5.5,9.5 L 11,3.5' Stroke='#FFFFFFFF' StrokeThickness='1.9' StrokeStartLineCap='Round' StrokeEndLineCap='Round' StrokeLineJoin='Round' Visibility='Collapsed' Stretch='None'/>"
+			+ "<Border x:Name='Box' Width='16' Height='16' CornerRadius='4.5' Background='@SURFACERAISED' BorderBrush='@SEP' BorderThickness='1' VerticalAlignment='Center' SnapsToDevicePixels='True'>"
+			+ "<Path x:Name='Mark' Data='M 2,5.5 L 4.3,7.8 L 8.8,3' Stroke='#FFFFFFFF' StrokeThickness='1.8' StrokeStartLineCap='Round' StrokeEndLineCap='Round' StrokeLineJoin='Round' Visibility='Collapsed' Stretch='None'/>"
 			+ "</Border>"
 			+ "<ContentPresenter Grid.Column='1' Margin='9,0,0,0' VerticalAlignment='Center' RecognizesAccessKey='True'/>"
 			+ "</Grid>"
@@ -480,15 +480,15 @@ public static class Polish
 		}
 		Border border = new Border
 		{
-			CornerRadius = new CornerRadius(Tokens.Radius.Panel),
+			CornerRadius = new CornerRadius(12.0),
 			Background = Card(light),
 			BorderBrush = Line(light),
 			BorderThickness = new Thickness(1.0),
-			Padding = new Thickness(26.0, 24.0, 26.0, 26.0),
+			Padding = new Thickness(22.0, 18.0, 22.0, 20.0),
 			Child = stackPanel,
-			Margin = new Thickness(0.0, 0.0, 0.0, 18.0)
+			Margin = new Thickness(0.0, 0.0, 0.0, 16.0)
 		};
-		border.Effect = CardShadow();
+		// 苹果的系统设置分组是「平的」：只靠一条发丝边与底色分层，不投卡片阴影。
 		return border;
 	}
 
