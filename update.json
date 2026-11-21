@@ -1,11 +1,11 @@
 {
-  "version": "1.0.39",
+  "version": "1.0.40",
   "released": "2026-11-21",
-  "notes": "设置界面按苹果系统设置的观感重做：侧边栏改为彩色图标块 + 文字，选中只保留一层淡淡的强调色软底，去掉了原来的蓝色投影；内容区卡片改成平面 + 发丝边，行与行之间补了细分隔线；侧边栏图标统一到同一尺寸并居中，其中「重要提示」的圆形信息图标之前因为残留了右边距而偏左，这次修好；六类设置页的卡片左右边界现在完全对齐。",
-  "installer": "IconBox-Setup-1.0.39.exe",
-  "portable": "IconBox_v1.0.39_User.zip",
+  "notes": "设置界面左侧导航的图标与文字现在都从同一条左基线开始：每个页签铺满侧边栏宽度，不再按文字长短各自居中；「重要提示」这页原本多留了 10px 左边距，也一并清掉。",
+  "installer": "IconBox-Setup-1.0.40.exe",
+  "portable": "IconBox_v1.0.40_User.zip",
   "sha256": {
-    "installer": "92214796CB0486E9024BFAE8B68F23F31611FF471577DE1BED77B21F14FA68E1",
-    "portable": "037947C4C8B843C8A2D64ADD733AF994223F62260028CFF0135DE9E5D52AD90E"
+    "installer": "DEA12EEA1DB81D3D98B245CE6A4145749A2B10DE7DE3A9834D36BB73A6ED2F99",
+    "portable": "A5EC86FEA02328A17260D43CF0E9832AC260F75B40DEDC741A1C75997F6C1B2D"
   }
 }
