@@ -84,6 +84,9 @@ public static class AppCategoryRules
 		// 路径提示只做小幅加权（+5），用于给系统目录里的工具补一点倾向，
 		// 但不会压过更具体的关键词，例如 WindowsPowerShell 仍然归开发类。
 		public string[] PathHints = new string[0];
+
+		// 反关键词：命中即整条规则作废（例如「微信开发者工具」不该归社交）。
+		public string[] AntiKeywords = new string[0];
 	}
 
 	// 「全部」不再是一个真实分类：它只是内部虚拟视图 id（显示所有应用），
@@ -415,7 +418,7 @@ public static class AppCategoryRules
 				"system configuration", "系统配置", "system information", "系统信息", "iscsi",
 				"administrative tools", "remote desktop", "远程桌面", "magnify", "放大镜", "narrator",
 				"屏幕阅读", "on-screen keyboard", "屏幕键盘", "voiceaccess", "语音访问", "livecaptions",
-				"实时字幕", "disk management", "磁盘管理", "设备管理器", "命令提示符", "cmd.exe"
+				"实时字幕", "command prompt", "diskmgmt", "disk management", "磁盘管理", "设备管理器", "命令提示符", "cmd.exe"
 			},
 			ExactNames = new string[] { "run", "运行", "cmd", "explorer", "taskmgr" },
 			PathHints = new string[] { "\\windows\\system32", "\\windows\\syswow64", "\\windows\\regedit.exe", "\\windows\\system32\\" }
@@ -423,12 +426,13 @@ public static class AppCategoryRules
 		new Rule
 		{
 			Id = Dev,
+			ExactNames = new string[] { "inno setup compiler" },
 			Keywords = new string[]
 			{
 				"powershell", "command prompt", "node.js", "nodejs", "install additional tools for node",
 				"deepseek harness", "visual studio", "vscode", "git bash", "git.exe", "github desktop",
 				"python", "windows terminal", "developer", "调试", "编译", "jdk", "java", "maven", "gradle",
-				"docker", "wireshark", "postman", "navicat", "android studio", "idea", "pycharm", "webstorm"
+				"docker", "wireshark", "postman", "navicat", "android studio", "idea", "pycharm", "webstorm", "opencode", "windsurf", "cursor", "trae", "clion", "goland"
 			}
 		},
 		new Rule
@@ -444,6 +448,7 @@ public static class AppCategoryRules
 		new Rule
 		{
 			Id = Media,
+			AntiKeywords = new string[] { "输入法", "加速器", "开发者工具" },
 			Keywords = new string[]
 			{
 				"potplayer", "media player", "网易云", "spotify", "vlc", "music", "音乐", "抖音",
@@ -463,6 +468,7 @@ public static class AppCategoryRules
 		new Rule
 		{
 			Id = Social,
+			AntiKeywords = new string[] { "输入法", "开发者工具", "developer tools" },
 			Keywords = new string[]
 			{
 				"微信", "wechat", "weixin", "qq", "腾讯会议", "tencent meeting", "小鱼易连", "oopz",
@@ -473,11 +479,12 @@ public static class AppCategoryRules
 		new Rule
 		{
 			Id = Office,
+			AntiKeywords = new string[] { "输入法" },
 			Keywords = new string[]
 			{
 				"wps", "office", "word", "excel", "powerpoint", "ppt", "pdf", "foxit", "acrobat",
 				"notion", "flowus", "folia", "清单", "笔记", "note", "报告", "文档", "xmind", "visio",
-				"project", "腾讯文档", "石墨", "印象笔记", "onedrive", "表格", "演示"
+				"project", "腾讯文档", "石墨", "印象笔记", "onedrive", "obsidian", "notion", "语雀", "typora", "logseq", "joplin", "表格", "演示"
 			}
 		},
 		new Rule
@@ -486,7 +493,7 @@ public static class AppCategoryRules
 			Keywords = new string[]
 			{
 				"firefox", "microsoft edge", "msedge", "chrome", "浏览器", "browser", "ego", "云盘",
-				"网盘", "netdisk", "adrive", "onedrive", "dropbox", "vpn", "clash", "v2ray", "proxy",
+				"网盘", "netdisk", "adrive", "onedrive", "obsidian", "notion", "语雀", "typora", "logseq", "joplin", "dropbox", "vpn", "clash", "v2ray", "proxy",
 				"代理", "atrust", "蒲公英", "sakura", "oppo 互联", "互联", "投屏", "向日葵", "todesk",
 				"anydesk", "teamviewer", "ftp", "winscp", "xshell", "securecrt"
 			}
@@ -508,7 +515,7 @@ public static class AppCategoryRules
 				"pixpin", "quicker", "deskbox", "nvidia", "mchose", "a hub", "hub", "everything",
 				"bandizip", "7-zip", "winrar", "snipaste", "utools", "豆包", "workbuddy", "输入法",
 				"水印相机", "解压", "截图", "桌面整理", "驱动", "硬件", "显卡", "磁盘工具", "分区",
-				"清理", "优化", "工具", "计算器", "记事本", "画图", "翻译", "词典", "录屏工具"
+				"清理", "优化", "工具", "计算器", "记事本", "画图", "翻译", "词典", "录屏工具", "magpie", "edithere", "alma"
 			}
 		}
 	};
@@ -566,6 +573,12 @@ public static class AppCategoryRules
 		}
 		// 文件夹没有扩展名，先判定，避免被下面的扩展名逻辑漏掉。
 		if (entry.IsFolder)
+		{
+			return true;
+		}
+		// 有些历史条目没有把 IsFolder 存进 layout.json：路径没有扩展名时按磁盘实际状态补判，
+		// 免得用户刚建的空文件夹被归到「其他」。
+		if (Path.GetExtension(path).Length == 0 && Directory.Exists(path))
 		{
 			return true;
 		}
@@ -632,56 +645,315 @@ public static class AppCategoryRules
 		return num;
 	}
 
-	private static string Guess(Entry entry)
-	{
-		string name = (entry.Name ?? "").ToLowerInvariant();
-		string path = ((entry.Path ?? "") + " " + (entry.LaunchTarget ?? "")).ToLowerInvariant();
-		string text = name + " " + path + " " + (entry.ProductInfo ?? "").ToLowerInvariant();
+	// ——— 归类打分 ———
+	// 只在「名称 / 产品名 / 目标程序名 / 目录名 / 完整路径」里找关键词：越可靠的字段权重越高。
+	// 拉丁关键词要求词边界，"obs" 就不会命中 "obsidian"，"qq" 也不会命中一个更长的英文单词。
+	private const int NameWeight = 3;
 
-		string best = null;
-		int bestScore = 0;
-		int bestOrder = int.MaxValue;
-		for (int i = 0; i < Rules.Length; i++)
+	private const int ProductWeight = 2;
+
+	private const int StemWeight = 2;
+
+	private const int FolderWeight = 1;
+
+	private const int PathWeight = 1;
+
+	// 低于这个分数的命中一律当作「没认出来」：宁可落到「其他」，也不硬塞进某个分类。
+	private const int MinGuessScore = 45;
+
+	public sealed class GuessHit
+	{
+		public string Id;
+
+		public int Score;
+
+		public string Keyword;
+
+		public string Field;
+	}
+
+	/// 把入口拆成几个可比较的字段（全部小写、标点统一成空格），用于打分与排查。
+	internal sealed class GuessContext
+	{
+		public string Name;
+
+		public string Product;
+
+		public string Stem;
+
+		public string Folders;
+
+		public string Full;
+
+		public static GuessContext From(Entry entry)
 		{
-			Rule rule = Rules[i];
-			int score = 0;
-			foreach (string exact in rule.ExactNames)
+			if (entry == null)
 			{
-				if (exact.Length != 0 && string.Equals(name, exact, StringComparison.Ordinal))
+				return null;
+			}
+			string target = entry.LaunchTarget ?? "";
+			string path = entry.Path ?? "";
+			return new GuessContext
+			{
+				Name = Clean(entry.Name),
+				Product = Clean(entry.ProductInfo),
+				Stem = Clean(StemOf(target, path)),
+				Folders = Clean(FoldersOf(string.IsNullOrEmpty(target) ? path : target)),
+				Full = Clean(path + " " + target)
+			};
+		}
+
+		/// 小写 + 标点归一：括号、连接符、路径分隔符都当空格，避免「（64 位）」这类后缀干扰词边界。
+		internal static string Clean(string text)
+		{
+			if (string.IsNullOrEmpty(text))
+			{
+				return "";
+			}
+			string lower = text.ToLowerInvariant();
+			global::System.Text.StringBuilder builder = new global::System.Text.StringBuilder(lower.Length);
+			foreach (char c in lower)
+			{
+				builder.Append(IsSeparator(c) ? ' ' : c);
+			}
+			string spaced = builder.ToString();
+			while (spaced.IndexOf("  ", StringComparison.Ordinal) >= 0)
+			{
+				spaced = spaced.Replace("  ", " ");
+			}
+			return spaced.Trim();
+		}
+
+		private static bool IsSeparator(char c)
+		{
+			switch (c)
+			{
+			case '(':
+			case ')':
+			case '[':
+			case ']':
+			case '{':
+			case '}':
+			case '（':
+			case '）':
+			case '【':
+			case '】':
+			case '_':
+			case '-':
+			case '+':
+			case '.':
+			case ',':
+			case '/':
+			case '\\':
+			case '|':
+			case ':':
+			case ';':
+			case '·':
+			case '\t':
+				return true;
+			default:
+				return false;
+			}
+		}
+
+		private static string StemOf(string target, string fallback)
+		{
+			string path = string.IsNullOrEmpty(target) ? fallback : target;
+			try
+			{
+				return global::System.IO.Path.GetFileNameWithoutExtension(path ?? "");
+			}
+			catch
+			{
+				return "";
+			}
+		}
+
+		private static string FoldersOf(string path)
+		{
+			try
+			{
+				return global::System.IO.Path.GetDirectoryName(path ?? "") ?? "";
+			}
+			catch
+			{
+				return "";
+			}
+		}
+	}
+
+	/// 返回每个分类的打分（降序），用于排查「为什么它被分到这一类」。
+	public static List<GuessHit> Explain(Entry entry)
+	{
+		List<GuessHit> hits = new List<GuessHit>();
+		GuessContext context = GuessContext.From(entry);
+		if (context == null)
+		{
+			return hits;
+		}
+		foreach (Rule rule in Rules)
+		{
+			string keyword;
+			string field;
+			int score = ScoreRule(rule, context, out keyword, out field);
+			if (score > 0)
+			{
+				hits.Add(new GuessHit
 				{
-					// 精确名称命中优先级高于任意普通关键词
-					score = Math.Max(score, 60 + exact.Length);
+					Id = rule.Id,
+					Score = score,
+					Keyword = keyword,
+					Field = field
+				});
+			}
+		}
+		hits.Sort((GuessHit a, GuessHit b) => b.Score.CompareTo(a.Score));
+		return hits;
+	}
+
+	private static int ScoreRule(Rule rule, GuessContext context, out string keyword, out string field)
+	{
+		keyword = null;
+		field = null;
+		int best = 0;
+		foreach (string exact in rule.ExactNames)
+		{
+			if (exact.Length != 0 && string.Equals(context.Name, GuessContext.Clean(exact), StringComparison.Ordinal))
+			{
+				int exactScore = 200 + exact.Length;
+				if (exactScore > best)
+				{
+					best = exactScore;
+					keyword = exact;
+					field = "name";
 				}
 			}
-			foreach (string keyword in rule.Keywords)
+		}
+		if (!Blocked(rule, context))
+		{
+			int[] weights = new int[5] { NameWeight, ProductWeight, StemWeight, FolderWeight, PathWeight };
+			string[] fields = new string[5] { context.Name, context.Product, context.Stem, context.Folders, context.Full };
+			string[] names = new string[5] { "name", "product", "stem", "folder", "path" };
+			foreach (string word in rule.Keywords)
 			{
-				if (keyword.Length == 0)
+				string needle = ((word == null) ? "" : word.ToLowerInvariant());
+				if (needle.Length == 0)
 				{
 					continue;
 				}
-				if (text.IndexOf(keyword, StringComparison.Ordinal) >= 0)
+				for (int i = 0; i < fields.Length; i++)
 				{
-					// 关键词越长越具体，用长度做权重
-					score = Math.Max(score, keyword.Length * 10);
+					int quality = MatchQuality(needle, fields[i]);
+					if (quality > 0)
+					{
+						int score = quality * weights[i] + Math.Min(needle.Length, 12);
+						if (score > best)
+						{
+							best = score;
+							keyword = word;
+							field = names[i];
+						}
+					}
 				}
-			}
-			if (score <= 0)
-			{
-				continue;
 			}
 			foreach (string hint in rule.PathHints)
 			{
-				if (hint.Length != 0 && path.IndexOf(hint, StringComparison.Ordinal) >= 0)
+				if (best > 0 && hint.Length != 0 && context.Full.IndexOf(hint.ToLowerInvariant(), StringComparison.Ordinal) >= 0)
 				{
-					score += 5;
+					best += 5;
 					break;
 				}
 			}
-			if (score > bestScore || (score == bestScore && i < bestOrder))
+		}
+		return best;
+	}
+
+	/// 反关键词：命中就整条规则作废（例如「微信开发者工具」不该归社交，「微信输入法」不该归社交）。
+	private static bool Blocked(Rule rule, GuessContext context)
+	{
+		foreach (string anti in rule.AntiKeywords)
+		{
+			if (anti.Length != 0 && context.Name.IndexOf(anti.ToLowerInvariant(), StringComparison.Ordinal) >= 0)
+			{
+				return true;
+			}
+		}
+		return false;
+	}
+
+	/// 词边界打分：完全相等 100、词首 80、整词 60、词尾 45、词中 20（只有拉丁词才判边界）。
+	private static int MatchQuality(string keyword, string text)
+	{
+		if (text.Length == 0 || keyword.Length == 0)
+		{
+			return 0;
+		}
+		int index = text.IndexOf(keyword, StringComparison.Ordinal);
+		if (index < 0)
+		{
+			return 0;
+		}
+		if (text.Length == keyword.Length)
+		{
+			return 100;
+		}
+		bool left = IsBoundary(text, index - 1);
+		bool right = IsBoundary(text, index + keyword.Length);
+		if (!IsLatin(keyword))
+		{
+			// 中文关键词没有词边界概念，噪声很低，直接给高分
+			return (left && right) ? 80 : 70;
+		}
+		if (left && right)
+		{
+			return 80;
+		}
+		if (left)
+		{
+			// 只命中词首（如 obs → obsidian）说明不是同一个词，给较低权重
+			return 45;
+		}
+		if (right)
+		{
+			return 45;
+		}
+		return 20;
+	}
+
+	private static bool IsLatin(string text)
+	{
+		foreach (char c in text)
+		{
+			if (c > '\u007f')
+			{
+				return false;
+			}
+		}
+		return true;
+	}
+
+	private static bool IsBoundary(string text, int index)
+	{
+		if (index < 0 || index >= text.Length)
+		{
+			return true;
+		}
+		char c = text[index];
+		return c < 'a' || c > 'z' ? (c < '0' || c > '9') && c != '_' : false;
+	}
+
+	private static string Guess(Entry entry)
+	{
+		GuessContext context = GuessContext.From(entry);
+		string best = null;
+		int bestScore = MinGuessScore - 1;
+		foreach (Rule rule in Rules)
+		{
+			int score = ScoreRule(rule, context, out string _, out string _);
+			if (score > bestScore)
 			{
 				bestScore = score;
 				best = rule.Id;
-				bestOrder = i;
 			}
 		}
 		if (best != null)
