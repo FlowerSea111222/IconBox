@@ -3,5 +3,5 @@ using System.Reflection;
 using System.Runtime.CompilerServices;
 
 [assembly: AssemblyTitle("IconBox-Source")]
-[assembly: AssemblyFileVersion("1.0.41")]
-[assembly: AssemblyVersion("1.0.41")]
+[assembly: AssemblyFileVersion("1.0.42")]
+[assembly: AssemblyVersion("1.0.42")]
