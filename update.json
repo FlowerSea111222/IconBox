@@ -1,11 +1,11 @@
 {
-  "version": "1.0.36",
-  "released": "2026-11-13",
-  "notes": "普通窗口不最大化时，Dock 在开启任务栏自动隐藏的情况下也常驻显示（落位被其它窗口占住时自动让开，鼠标压底边仍可唤出）；同时修正前台窗口类型判定在 150% 缩放下的 DIP/像素混用问题。",
-  "installer": "https://github.com/FlowerSea111222/IconBox/releases/download/v1.0.36/IconBox-Setup-1.0.36.exe",
-  "portable": "https://github.com/FlowerSea111222/IconBox/releases/download/v1.0.36/IconBox_v1.0.36_User.zip",
+  "version": "1.0.37",
+  "released": "2026-11-21",
+  "notes": "外观向苹果 Liquid Glass 靠拢：玻璃口改为方向性镜面边（左上迎光、右下淡反射）、表面加一层透光、模糊下限提到 18、深色玻璃底色更中性并掺入 16% 强调色、窗口阴影改为更柔的环境光；Dock 图标按下即有 95.5% 即时缩放反馈；高对比度主题下自动退回不透明表面。",
+  "installer": "https://github.com/FlowerSea111222/IconBox/releases/download/v1.0.37/IconBox-Setup-1.0.37.exe",
+  "portable": "https://github.com/FlowerSea111222/IconBox/releases/download/v1.0.37/IconBox_v1.0.37_User.zip",
   "sha256": {
-    "installer": "3A145C529E8A235A94BE175712FD8F9B3AD33313ED08751D1EA3E77EB5633589",
-    "portable": "C82FE4AB4EEA69496BB040BDE207B0B7F5AE81B743BA665C9E99B134FA2568BB"
+    "installer": "1EE58BE23AEFC43071773D1629D3E8DC94DC20CF1F71A89F439B0F6E4DF6CD9F",
+    "portable": "F38F7347DA18E69B32146D6E00D7CBC947101ABF68E7C2B28F1A7C4DD6F9618B"
   }
 }
