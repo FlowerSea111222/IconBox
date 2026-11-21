@@ -2246,6 +2246,41 @@ public class DockWindow : GlassWindow
 				});
 			}
 		};
+		// 苹果式即时反馈：按下瞬间就缩到 95.5%（90ms 内到位，不等 click），抬起 210ms 弹回悬停尺寸。
+		// 目标值基于当前 zoomTarget，因此和悬停放大可以叠加（悬停 1.0x→Zoom，按下再乘 0.955）。
+		Action<bool> pressScale = delegate(bool down)
+		{
+			if (!MotionEnabled)
+			{
+				return;
+			}
+			double pressTarget = (down ? (zoomTarget * AppleGlass.PressScale) : zoomTarget);
+			CubicEase pressEase = new CubicEase
+			{
+				EasingMode = EasingMode.EaseOut
+			};
+			double pressMs = (down ? AppleGlass.PressInMs : AppleGlass.PressOutMs);
+			scale.BeginAnimation(ScaleTransform.ScaleXProperty, new DoubleAnimation(pressTarget, TimeSpan.FromMilliseconds(pressMs))
+			{
+				EasingFunction = pressEase
+			});
+			scale.BeginAnimation(ScaleTransform.ScaleYProperty, new DoubleAnimation(pressTarget, TimeSpan.FromMilliseconds(pressMs))
+			{
+				EasingFunction = pressEase
+			});
+		};
+		button.PreviewMouseLeftButtonDown += delegate
+		{
+			pressScale(obj: true);
+		};
+		button.PreviewMouseLeftButtonUp += delegate
+		{
+			pressScale(obj: false);
+		};
+		button.LostMouseCapture += delegate
+		{
+			pressScale(obj: false);
+		};
 		button.MouseEnter += (object s, System.Windows.Input.MouseEventArgs e) =>
 		{
 			if (!DockInputBusy)
