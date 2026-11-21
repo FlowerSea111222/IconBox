@@ -74,18 +74,21 @@ public static class UpdateNotice
 		Border card = new Border
 		{
 			Background = cardBrush,
-			CornerRadius = new CornerRadius(10.0),
-			Padding = new Thickness(14.0, 12.0, 14.0, 13.0),
-			Margin = new Thickness(4.0, 6.0, 4.0, 6.0)
+			BorderBrush = lineBrush,
+			BorderThickness = new Thickness(1.0),
+			CornerRadius = new CornerRadius(12.0),
+			Padding = new Thickness(20.0, 16.0, 20.0, 18.0),
+			Margin = new Thickness(0.0, 2.0, 0.0, 12.0)
 		};
 		StackPanel panel = new StackPanel();
 		card.Child = panel;
+		// 苹果的系统设置里分组标题是主色文字，强调色只留给可交互控件，不用来写标题。
 		panel.Children.Add(new TextBlock
 		{
 			Text = title,
-			FontSize = 15.5,
+			FontSize = 15.0,
 			FontWeight = FontWeights.SemiBold,
-			Foreground = accent,
+			Foreground = Tokens.Label(light),
 			TextWrapping = TextWrapping.Wrap
 		});
 		TextBlock body = new TextBlock
@@ -94,7 +97,7 @@ public static class UpdateNotice
 			Foreground = Tokens.LabelSecondary(light),
 			LineHeight = 21.0,
 			TextWrapping = TextWrapping.Wrap,
-			Margin = new Thickness(0.0, 7.0, 0.0, 0.0)
+			Margin = new Thickness(0.0, 8.0, 0.0, 0.0)
 		};
 		for (int i = 0; i < lines.Length; i++)
 		{
@@ -105,13 +108,6 @@ public static class UpdateNotice
 			body.Inlines.Add(new System.Windows.Documents.Run(lines[i]));
 		}
 		panel.Children.Add(body);
-		Border divider = new Border
-		{
-			Height = 1.0,
-			Background = lineBrush,
-			Margin = new Thickness(0.0, 11.0, 0.0, 0.0)
-		};
-		panel.Children.Add(divider);
 		return card;
 	}
 }
