@@ -23,7 +23,7 @@ public static class UpdateNotice
 		};
 		StackPanel content = new StackPanel
 		{
-			Margin = new Thickness(0.0, 0.0, 6.0, 0.0)
+			Margin = new Thickness(24.0, 0.0, 26.0, 0.0)
 		};
 		scroll.Content = content;
 		content.Children.Add(Card("项目已开源，更新方式如下", new string[]
@@ -61,6 +61,7 @@ public static class UpdateNotice
 		});
 		TabItem item = new TabItem
 		{
+			HorizontalContentAlignment = System.Windows.HorizontalAlignment.Stretch,
 			Header = noticeHeader,
 			Content = scroll,
 			Tag = noticeIcon
