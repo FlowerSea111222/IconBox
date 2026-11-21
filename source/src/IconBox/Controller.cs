@@ -189,7 +189,7 @@ public class Controller
 		glassSuppressed = Prefs.GameMode || (Prefs.AutoGameMode && FullscreenState.Active());
 		Tray = new NotifyIcon
 		{
-			Text = "IconBox v1.0.39 · 玻璃启动台",
+			Text = "IconBox v1.0.40 · 玻璃启动台",
 			Icon = (Icon.ExtractAssociatedIcon(Assembly.GetExecutingAssembly().Location) ?? SystemIcons.Application),
 			Visible = true
 		};
@@ -1871,7 +1871,7 @@ public class Controller
 			bool settingsLight = Prefs.Light;
 			Window w = new Window
 			{
-				Title = "IconBox · 个性化与控制 v1.0.39",
+				Title = "IconBox · 个性化与控制 v1.0.40",
 				Width = Math.Min(940.0, SystemParameters.WorkArea.Width - 40.0),
 				Height = Math.Min(790.0, SystemParameters.WorkArea.Height - 50.0),
 				MinWidth = 560.0,
@@ -2013,6 +2013,7 @@ public class Controller
 				});
 				TabItem newItem = new TabItem
 				{
+					HorizontalAlignment = System.Windows.HorizontalAlignment.Stretch,
 					HorizontalContentAlignment = System.Windows.HorizontalAlignment.Stretch,
 					Header = navHeader,
 					Content = new ScrollViewer
@@ -2207,6 +2208,15 @@ public class Controller
                         Child = navGlyph
                     };
                     navHeader.Children.Insert(0, navTileBox);
+                    // 文字统一从同一条左基线开始：这一页原本给文字留了 10px 左边距，加上图标块的右边距会多缩进一格。
+                    foreach (object navChild in navHeader.Children)
+                    {
+                        TextBlock navLabel = navChild as TextBlock;
+                        if (navLabel != null)
+                        {
+                            navLabel.Margin = new Thickness(0.0);
+                        }
+                    }
                     navIndex++;
                 }
             };
