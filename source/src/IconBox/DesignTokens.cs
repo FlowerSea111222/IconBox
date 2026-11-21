@@ -129,14 +129,18 @@ public static class Tokens
 
 	// ── 阴影 ────────────────────────────────────────────────────────────────
 	// 统一使用柔和、低不透明度的投影；窗口用大半径浅投影，卡片用小半径。
+	/// <summary>
+	/// 浮窗环境光：苹果的 chrome 用「大而淡」的环境投影，不用硬阴影——
+	/// 位移越小、模糊越大，越像贴在桌面上的玻璃，而不是压在纸上的卡片。
+	/// </summary>
 	public static DropShadowEffect WindowShadow()
 	{
 		DropShadowEffect effect = new DropShadowEffect
 		{
-			BlurRadius = 46.0,
-			ShadowDepth = 14.0,
+			BlurRadius = 40.0,
+			ShadowDepth = 9.0,
 			Direction = 270.0,
-			Opacity = 0.22,
+			Opacity = 0.18,
 			Color = Colors.Black,
 			RenderingBias = RenderingBias.Performance
 		};
