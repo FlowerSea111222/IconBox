@@ -1,11 +1,11 @@
 {
-  "version": "1.0.42",
-  "released": "2026-11-21",
-  "notes": "重写图标自动分类算法：改为按字段加权打分（名称/产品名/可执行名/目录/路径）+ 词边界匹配（不再用无边界子串），加入反关键词与置信度阈值，并统一标点归一。修好一批明显误判（Obsidian 归到媒体、Command Prompt 归到开发、无扩展名文件夹归到其他、Inno Setup Compiler 归到工具等），并补了笔记类应用、AI 编程工具、命令行工具等关键词。已手动归类的条目不受影响。",
-  "installer": "IconBox-Setup-1.0.42.exe",
-  "portable": "IconBox_v1.0.42_User.zip",
+  "version": "1.0.43",
+  "released": "2026-11-22",
+  "notes": "把「面板与主题」和「Dock DIY」两个设置页合并成一页「外观与布局」：上面是大面板实时预览，下面按「整体外观 / 大面板 / Dock 栏」三段排列，同一类调节项不再分散在两个页签里。原有的全部选项都保留，只是重新分组。",
+  "installer": "IconBox-Setup-1.0.43.exe",
+  "portable": "IconBox_v1.0.43_User.zip",
   "sha256": {
-    "installer": "1EBF70A0232E1856444DBBF12F945270000C24EF4994CCC24A747E7B70123143",
-    "portable": "97D9FE7CF8EE74A24F16BB91B31D5C6EB802A0E0E2EE30B3C2C40DBBBAED9D50"
+    "installer": "31BA1AD4236A13465750E32A9EE5EFEF8DA7FE7741609F0A32A97D80C02A86C9",
+    "portable": "64059DE61FE14C0EF841A820D9163D1211231734D4092C2312382B5FF52B1B5F"
   }
 }
