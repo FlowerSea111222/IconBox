@@ -1,11 +1,11 @@
 {
-  "version": "1.0.43",
+  "version": "1.0.44",
   "released": "2026-11-22",
-  "notes": "把「面板与主题」和「Dock DIY」两个设置页合并成一页「外观与布局」：上面是大面板实时预览，下面按「整体外观 / 大面板 / Dock 栏」三段排列，同一类调节项不再分散在两个页签里。原有的全部选项都保留，只是重新分组。",
-  "installer": "IconBox-Setup-1.0.43.exe",
-  "portable": "IconBox_v1.0.43_User.zip",
+  "notes": "「外观与布局」页的分组改成可折叠，并按「统一 Dock / 大面板外观」开关自动收起：开启统一时，大面板与 Dock 栏两组默认折叠（只看统一参数）；关闭统一时，统一参数折叠，大面板与 Dock 栏各自展开。折叠的标题带箭头，点一下就展开，随时可以手动翻看被收起的设置。",
+  "installer": "IconBox-Setup-1.0.44.exe",
+  "portable": "IconBox_v1.0.44_User.zip",
   "sha256": {
-    "installer": "31BA1AD4236A13465750E32A9EE5EFEF8DA7FE7741609F0A32A97D80C02A86C9",
-    "portable": "64059DE61FE14C0EF841A820D9163D1211231734D4092C2312382B5FF52B1B5F"
+    "installer": "53AE118066072420159EEDF4084FEE8A30C503B0628776D5B065EB6A58DD68F1",
+    "portable": "692CE50E518223BEFC69CC40E2DBB5838246770BDDB64F2823A0BCA1B5EF1913"
   }
 }
