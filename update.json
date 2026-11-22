@@ -1,11 +1,11 @@
 {
-  "version": "1.0.45",
+  "version": "1.0.46",
   "released": "2026-11-22",
-  "notes": "玻璃材质调得更清透：填充层再透一档、强调色掺入量从 16% 降到 10%，顶部那道白色光泽改成贴着上沿的窄带（不再整块泛白），边缘高光压薄成一条细硬的玻璃口，模糊下限从 18 提到 26 让背后的内容化成柔和的色块而不是清晰文字。Dock、大面板、控制中心、设置窗共用同一套材质，观感一致。",
-  "installer": "IconBox-Setup-1.0.45.exe",
-  "portable": "IconBox_v1.0.45_User.zip",
+  "notes": "搜索框不再是一块死白：输入框改为透明（模板跟随 Background，其它输入框仍是白底），只保留极淡的一层反光；搜索结果下拉改成和面板同一套玻璃材质（92% 的玻璃底 + 镜面细边 + 柔和投影），色调跟随全局玻璃，文字仍保持清晰可读。",
+  "installer": "IconBox-Setup-1.0.46.exe",
+  "portable": "IconBox_v1.0.46_User.zip",
   "sha256": {
-    "installer": "C36DBB22B054A46EBC7F3EEEBF02FB5988597CCE463994743167937C381CF048",
-    "portable": "11AF7BCAD3B8B27A4FB1FF6D6F15732D490074E96E5BCCEB0BFEA6300E0A855B"
+    "installer": "EF44D7835E897B78F77481A4A3D0E9AF403F9268D3E0B124F1F3A687335D80A2",
+    "portable": "F2495409409C20C9A6AC7A402A5AD003F8200804867DBC75D7F1899E25FB6F37"
   }
 }
