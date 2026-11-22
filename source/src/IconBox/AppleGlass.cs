@@ -27,10 +27,10 @@ public static class AppleGlass
 		}
 		// 亮面玻璃（浅色主题）本身背景很亮，边缘再压白会「糊掉」，
 		// 所以浅色用更低的透明度，并把右下那道反射压得更薄，形成一条细硬的玻璃口。
-		double topAlpha = light ? 0.50 : 0.62;
+		double topAlpha = light ? 0.40 : 0.56;
 		double midAlpha = light ? 0.05 : 0.09;
-		double lowAlpha = light ? 0.14 : 0.22;
-		double bottomAlpha = light ? 0.30 : 0.40;
+		double lowAlpha = light ? 0.10 : 0.18;
+		double bottomAlpha = light ? 0.20 : 0.34;
 		LinearGradientBrush brush = new LinearGradientBrush
 		{
 			StartPoint = new Point(0.0, 0.0),
@@ -54,9 +54,9 @@ public static class AppleGlass
 			EndPoint = new Point(0.5, 1.0),
 			MappingMode = BrushMappingMode.RelativeToBoundingBox
 		};
-		brush.GradientStops.Add(new GradientStop(Color.FromArgb((byte)(light ? 110 : 76), 255, 255, 255), 0.0));
-		brush.GradientStops.Add(new GradientStop(Color.FromArgb((byte)(light ? 34 : 26), 255, 255, 255), 0.34));
-		brush.GradientStops.Add(new GradientStop(Color.FromArgb(0, 255, 255, 255), 0.62));
+		brush.GradientStops.Add(new GradientStop(Color.FromArgb((byte)(light ? 56 : 50), 255, 255, 255), 0.0));
+		brush.GradientStops.Add(new GradientStop(Color.FromArgb((byte)(light ? 22 : 18), 255, 255, 255), 0.16));
+		brush.GradientStops.Add(new GradientStop(Color.FromArgb(0, 255, 255, 255), 0.42));
 		brush.Freeze();
 		return brush;
 	}
@@ -65,7 +65,7 @@ public static class AppleGlass
 	/// 磨砂玻璃的最小模糊半径：低于这个值就没有「材质感」，只剩半透明色块。
 	/// 取 18 与默认「玻璃模糊 = 18」一致，用户把它调低时仍然保留苹果式的磨砂质感。
 	/// </summary>
-	public const double MinBlur = 18.0;
+	public const double MinBlur = 26.0;
 
 	/// <summary>按下时的缩放（苹果的即时反馈是手指压下去的瞬间缩小，不等 click）。</summary>
 	public const double PressScale = 0.955;
