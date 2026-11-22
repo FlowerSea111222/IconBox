@@ -210,7 +210,7 @@ public static class Polish
 
 		// 文本框：填充式，无硬描边，聚焦时强调色细边。
 		string textBoxXaml = "<ControlTemplate xmlns='http://schemas.microsoft.com/winfx/2006/xaml/presentation' TargetType='TextBox'>"
-			+ "<Border x:Name='Chrome' Background='@SURFACERAISED' BorderBrush='@SEP' BorderThickness='1' CornerRadius='" + Tokens.Radius.Control.ToString("0.##") + "' Padding='{TemplateBinding Padding}' SnapsToDevicePixels='True'>"
+			+ "<Border x:Name='Chrome' Background='{TemplateBinding Background}' BorderBrush='@SEP' BorderThickness='1' CornerRadius='" + Tokens.Radius.Control.ToString("0.##") + "' Padding='{TemplateBinding Padding}' SnapsToDevicePixels='True'>"
 			+ "<ScrollViewer x:Name='PART_ContentHost' VerticalAlignment='{TemplateBinding VerticalContentAlignment}'/>"
 			+ "</Border>"
 			+ "<ControlTemplate.Triggers>"
@@ -219,7 +219,8 @@ public static class Polish
 			+ "<Trigger Property='IsEnabled' Value='False'><Setter Property='Opacity' Value='0.4'/></Trigger>"
 			+ "</ControlTemplate.Triggers></ControlTemplate>";
 		Style textBox = StyleOf(typeof(TextBox), Template(textBoxXaml, light), light);
-		textBox.Setters.Add(new Setter(Control.BackgroundProperty, Brushes.Transparent));
+		// 模板改成跟随 Background，这样个别输入框（例如面板搜索）可以设成透明融进玻璃，其余仍用白底。
+		textBox.Setters.Add(new Setter(Control.BackgroundProperty, Tokens.SurfaceRaised(light)));
 		textBox.Setters.Add(new Setter(Control.BorderThicknessProperty, new Thickness(0.0)));
 		textBox.Setters.Add(new Setter(Control.PaddingProperty, new Thickness(11.0, 6.0, 11.0, 6.0)));
 		textBox.Setters.Add(new Setter(FrameworkElement.MinHeightProperty, 34.0));
