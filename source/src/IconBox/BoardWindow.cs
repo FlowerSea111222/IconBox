@@ -795,7 +795,8 @@ public class BoardWindow : GlassWindow
 			// 但也不能瘦到文字顶着边——这里是固定宽度（不是 MaxWidth：左对齐时 Border 会缩到
 			// 内容宽度，占位文字刚好把格子撑满，看起来就像被截断），给占位文字留出后半截空白。
 			BorderBrush = new SolidColorBrush(System.Windows.Media.Color.FromArgb(70, byte.MaxValue, byte.MaxValue, byte.MaxValue)),
-			Background = new SolidColorBrush(System.Windows.Media.Color.FromArgb(22, byte.MaxValue, byte.MaxValue, byte.MaxValue)),
+			// 胶囊自身只留极淡的一层反光，真正的观感由下层玻璃决定（输入框已改为透明）。
+			Background = new SolidColorBrush(System.Windows.Media.Color.FromArgb(18, byte.MaxValue, byte.MaxValue, byte.MaxValue)),
 			HorizontalAlignment = System.Windows.HorizontalAlignment.Left,
 			Width = 240.0,
 			ClipToBounds = true,
@@ -2010,15 +2011,19 @@ public class BoardWindow : GlassWindow
 			PopupAnimation = System.Windows.Controls.Primitives.PopupAnimation.Fade,
 			VerticalOffset = 2.0
 		};
-		System.Windows.Media.Color color = (C.Prefs.Light ? System.Windows.Media.Color.FromRgb(250, 252, byte.MaxValue) : System.Windows.Media.Color.FromRgb(28, 32, 44));
+		// 下拉面板跟随全局玻璃：用与面板相同的填充色，只是再实一点，保证结果文字可读。
+		MaterialOptions popupMaterial = C.Prefs.BoardMaterial ?? new MaterialOptions();
+		// 128 = 92% 实底：GlassMaterials 内部统一乘了 0.72 的清透系数，
+		// 下拉列表需要压住背后的图标保证可读，所以这里按 92% 反算回去，色调仍与全局玻璃同源。
+		double popupPercent = 128.0;
 		System.Windows.Media.Color color2 = (C.Prefs.Light ? System.Windows.Media.Color.FromRgb(32, 38, 53) : System.Windows.Media.Color.FromRgb(244, 246, 252));
 		System.Windows.Media.Color color3 = (C.Prefs.Light ? System.Windows.Media.Color.FromRgb(210, 216, 226) : System.Windows.Media.Color.FromRgb(62, 72, 96));
-		color.A = byte.MaxValue;
 		color3.A = 180;
 		searchList = new System.Windows.Controls.ListBox
 		{
 			Background = System.Windows.Media.Brushes.Transparent,
 			BorderThickness = new Thickness(0.0),
+			Foreground = Tokens.Label(C.Prefs.Light),
 			MaxHeight = 400.0
 		};
 		ScrollViewer.SetVerticalScrollBarVisibility(searchList, ScrollBarVisibility.Hidden);
@@ -2026,13 +2031,14 @@ public class BoardWindow : GlassWindow
 		Border border = new Border
 		{
 			CornerRadius = new CornerRadius(14.0),
-			Background = new SolidColorBrush(color),
+			Background = GlassMaterials.Fill(popupMaterial, C.Prefs.Light, popupPercent, C.Prefs.Dock.Accent),
 			BorderBrush = new SolidColorBrush(color3),
 			BorderThickness = new Thickness(1.0),
 			Padding = new Thickness(6.0),
 			MinWidth = 300.0,
 			MaxWidth = 460.0,
-			Child = searchList
+			Child = searchList,
+			Effect = Tokens.FloatingShadow()
 		};
 		Style style = new Style(typeof(System.Windows.Controls.ListBox));
 		style.Setters.Add(new Setter(System.Windows.Controls.Control.BackgroundProperty, System.Windows.Media.Brushes.Transparent));
