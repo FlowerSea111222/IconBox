@@ -680,7 +680,7 @@ public class GlassWindow : Window
 			{
 				Stretch = Stretch.Fill
 			},
-			Opacity = (LightTheme ? 0.8 : 0.66)
+			Opacity = (LightTheme ? 0.9 : 0.8)
 		};
 		border.Clip = new RectangleGeometry(new Rect(0.0, 0.0, Width - 28.0, Height - 28.0), Surface.CornerRadius.TopLeft, Surface.CornerRadius.TopLeft);
 		border.Effect = backdropBlur;
@@ -715,7 +715,7 @@ public class GlassWindow : Window
 			{
 				border.Clip = clip;
 				border.CornerRadius = Surface.CornerRadius;
-				border.Opacity = (LightTheme ? 0.8 : 0.66);
+				border.Opacity = (LightTheme ? 0.9 : 0.8);
 				border.Effect = backdropBlur;
 			}
 		}
@@ -794,7 +794,7 @@ public class GlassWindow : Window
 					CornerRadius = Surface.CornerRadius,
 					IsHitTestVisible = false,
 					Background = AppleGlass.Sheen(LightTheme),
-					Opacity = Math.Min(0.85, 0.35 + CurrentMaterial.Gloss)
+					Opacity = Math.Min(0.6, 0.18 + CurrentMaterial.Gloss * 0.6)
 				});
 			}
 		}
