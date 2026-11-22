@@ -189,7 +189,7 @@ public class Controller
 		glassSuppressed = Prefs.GameMode || (Prefs.AutoGameMode && FullscreenState.Active());
 		Tray = new NotifyIcon
 		{
-			Text = "IconBox v1.0.46 · 玻璃启动台",
+			Text = "IconBox v1.0.47 · 玻璃启动台",
 			Icon = (Icon.ExtractAssociatedIcon(Assembly.GetExecutingAssembly().Location) ?? SystemIcons.Application),
 			Visible = true
 		};
@@ -1871,9 +1871,9 @@ public class Controller
 			bool settingsLight = Prefs.Light;
 			Window w = new Window
 			{
-				Title = "IconBox · 个性化与控制 v1.0.46",
-				Width = Math.Min(940.0, SystemParameters.WorkArea.Width - 40.0),
-				Height = Math.Min(790.0, SystemParameters.WorkArea.Height - 50.0),
+				Title = "IconBox · 个性化与控制 v1.0.47",
+				Width = Math.Min(880.0, SystemParameters.WorkArea.Width - 40.0),
+				Height = Math.Min(740.0, SystemParameters.WorkArea.Height - 50.0),
 				MinWidth = 560.0,
 				ResizeMode = ResizeMode.CanResize,
 				WindowStartupLocation = WindowStartupLocation.CenterScreen,
@@ -1886,7 +1886,7 @@ public class Controller
 				cleanup();
 			};
 			Rect workArea = SystemParameters.WorkArea;
-			double[] array = SettingsPlacementRules.Vertical(workArea.Top, workArea.Height, Dock.RestingTop, Dock.Height, 790.0);
+			double[] array = SettingsPlacementRules.Vertical(workArea.Top, workArea.Height, Dock.RestingTop, Dock.Height, 740.0);
 			w.WindowStartupLocation = WindowStartupLocation.Manual;
 			w.Left = workArea.Left + (workArea.Width - w.Width) / 2.0;
 			w.Top = array[0];
@@ -2826,15 +2826,10 @@ public class Controller
 			};
 			stackPanel4.Children.Add(new TextBlock
 			{
-				Text = "快捷键与桌面开关",
-				FontSize = 18.0
-			});
-			stackPanel4.Children.Add(new TextBlock
-			{
-				Text = "可点击录制直接按组合键，改完即时生效。右侧开关即时操作。\n隐藏开关：开启彻底隐藏任务栏，关闭显示；自动开关：Windows 任务栏自动隐藏（悬停底部边缘弹出）。\n两者互斥：开启其中一个会自动关闭另一个。注意：彻底隐藏任务栏窗口与 Wallpaper Engine 等动态壁纸可能冲突（表现为背景白屏），如遇白屏请改用自动隐藏。\n修改组合时下方会实时探测冲突（可用/被占用）。快捷键在 IconBox 后台运行时始终有效：关闭面板不影响，托盘「退出」才失效；组合被其他软件占用时会每 5 秒自动重试，对方释放后自动接管。",
+				Text = "点「录制」按一下新组合即可即时生效；右侧开关控制隐藏 / 自动隐藏任务栏（互斥）。组合被占用时每 5 秒自动重试。",
 				Foreground = Tokens.LabelSecondary(settingsLight),
 				TextWrapping = TextWrapping.Wrap,
-				Margin = new Thickness(0.0, 8.0, 0.0, 18.0)
+				Margin = new Thickness(0.0, 6.0, 0.0, 12.0)
 			});
 			Dictionary<string, uint> keyChoices = HotkeyRules.Keys();
 			Dictionary<int, Tuple<System.Windows.Controls.CheckBox, System.Windows.Controls.ComboBox, System.Windows.Controls.ComboBox>> controls = new Dictionary<int, Tuple<System.Windows.Controls.CheckBox, System.Windows.Controls.ComboBox, System.Windows.Controls.ComboBox>>();
@@ -2846,21 +2841,18 @@ public class Controller
 				int id = binding.ActionId;
 				StackPanel stackPanel7 = new StackPanel
 				{
-					Margin = new Thickness(0.0, 0.0, 0.0, 14.0)
+					Margin = new Thickness(0.0, 0.0, 0.0, 8.0)
 				};
 				stackPanel4.Children.Add(stackPanel7);
 				Grid grid2 = new Grid();
-				double[] array2 = new double[4] { 1.7, 1.7, 0.8, 1.1 };
-				foreach (double value in array2)
-				{
-					grid2.ColumnDefinitions.Add(new ColumnDefinition
-					{
-						Width = new GridLength(value, GridUnitType.Star)
-					});
-				}
+				// 名称占满剩余宽度；两个下拉给固定宽度，避免「Ctrl + Alt」被截成「Ctrl + Al」。
+				grid2.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1.0, GridUnitType.Star) });
+				grid2.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(118.0) });
+				grid2.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(104.0) });
+				grid2.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(0.6, GridUnitType.Star) });
 				grid2.ColumnDefinitions.Insert(3, new ColumnDefinition
 				{
-					Width = new GridLength(64.0)
+					Width = new GridLength(86.0)
 				});
 				stackPanel7.Children.Add(grid2);
 				System.Windows.Controls.CheckBox enabled = new System.Windows.Controls.CheckBox
@@ -2880,7 +2872,7 @@ public class Controller
 				{
 					ItemsSource = HotkeyRules.ModifierNames,
 					SelectedIndex = Array.IndexOf(HotkeyRules.ModifierValues, binding.Modifiers),
-					Height = 32.0,
+					Height = 30.0,
 					Margin = new Thickness(0.0, 0.0, 8.0, 0.0),
 					IsEnabled = binding.Enabled
 				};
@@ -2890,7 +2882,7 @@ public class Controller
 				{
 					ItemsSource = keyChoices.Keys.ToList(),
 					SelectedItem = keyChoices.First((KeyValuePair<string, uint> k) => k.Value == binding.Key).Key,
-					Height = 32.0,
+					Height = 30.0,
 					Margin = new Thickness(0.0, 0.0, 8.0, 0.0),
 					IsEnabled = binding.Enabled
 				};
@@ -2910,7 +2902,7 @@ public class Controller
 				System.Windows.Controls.Button button = new System.Windows.Controls.Button
 				{
 					Content = "录制",
-					Height = 32.0,
+					Height = 30.0,
 					Margin = new Thickness(0.0, 0.0, 8.0, 0.0)
 				};
 				Grid.SetColumn(button, 3);
@@ -2956,13 +2948,7 @@ public class Controller
 					}
 					toggleButton.ToolTip = ((id == 7) ? "开启 Windows 任务栏自动隐藏" : "开启隐藏，关闭显示");
 					stackPanel8.Children.Add(toggleButton);
-					stackPanel8.Children.Add(new TextBlock
-					{
-						Text = ((id == 7) ? "自动" : "隐藏"),
-						Margin = new Thickness(6.0, 0.0, 0.0, 0.0),
-						VerticalAlignment = VerticalAlignment.Center,
-						Foreground = Tokens.Label(settingsLight)
-					});
+					// 开关旁不再放「隐藏 / 自动」文字：列宽有限会被截断，工具提示已经说明用途。
 					switches[id] = toggleButton;
 					toggleButton.Checked += (object s, RoutedEventArgs e) =>
 					{
@@ -3010,8 +2996,9 @@ public class Controller
 				{
 					Foreground = Tokens.LabelSecondary(settingsLight),
 					FontSize = 11.0,
+					Visibility = Visibility.Collapsed,
 					TextWrapping = TextWrapping.Wrap,
-					Margin = new Thickness(0.0, 6.0, 0.0, 0.0)
+					Margin = new Thickness(0.0, 4.0, 0.0, 0.0)
 				};
 				stackPanel7.Children.Add(textBlock);
 				info[id] = textBlock;
@@ -3051,9 +3038,9 @@ public class Controller
 					{
 						bool taskbar = hotkey.ActionId == 2;
 						bool? flag2 = DesktopVisibility.IsHidden(taskbar);
-						string text3 = text2;
-						string text4 = ((!flag2.HasValue) ? "未找到系统窗口" : (flag2.Value ? "隐藏" : "显示"));
-						text2 = text3 + " · 实际状态：" + text4;
+
+
+
 						switches[hotkey.ActionId].IsChecked = DesktopVisibility.DesiredHidden(taskbar);
 					}
 					if (hotkey.ActionId == 7)
@@ -3063,7 +3050,7 @@ public class Controller
 							// 与「隐藏任务栏」互斥的偏好状态，而非运行时 ABS_AUTOHIDE 位
 							bool enabled2 = Prefs.AutoHideTaskbar && !Prefs.HideTaskbar;
 							switches[7].IsChecked = enabled2;
-							text2 = text2 + " · 自动隐藏：" + (enabled2 ? "开启" : "关闭");
+
 						}
 						catch
 						{
@@ -3071,6 +3058,8 @@ public class Controller
 						}
 					}
 					info[hotkey.ActionId].Text = text2;
+					// 正常状态不占一行：只有未注册 / 被占用 / 已关闭才露出来。
+					info[hotkey.ActionId].Visibility = ((text2 == "快捷键已注册" || text2 == "快捷键已关闭") ? Visibility.Collapsed : Visibility.Visible);
 				}
 				syncing = false;
 			};
