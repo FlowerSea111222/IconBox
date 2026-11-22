@@ -23,13 +23,13 @@ public static class GlassMaterials
 			color = (light ? Color.FromRgb(234, 237, 244) : Color.FromRgb(52, 56, 66));
 			// "跟随强调色"：把强调色以 16% 掺入玻璃底色（与菜单同源思路），切换强调色时玻璃可见变化
 			Color accentColor = IconPacks.AccentColor(accent);
-			color = Color.FromRgb((byte)((double)color.R + ((double)(int)accentColor.R - (double)color.R) * 0.16), (byte)((double)color.G + ((double)(int)accentColor.G - (double)color.G) * 0.16), (byte)((double)color.B + ((double)(int)accentColor.B - (double)color.B) * 0.16));
+			color = Color.FromRgb((byte)((double)color.R + ((double)(int)accentColor.R - (double)color.R) * 0.10), (byte)((double)color.G + ((double)(int)accentColor.G - (double)color.G) * 0.10), (byte)((double)color.B + ((double)(int)accentColor.B - (double)color.B) * 0.10));
 		}
 		else
 		{
 			color = (Color)ColorConverter.ConvertFromString(options.Tint);
 		}
-		color.A = (byte)Math.Round(percent * 255.0 / 100.0);
+		color.A = (byte)Math.Round(percent * 0.72 * 255.0 / 100.0);
 		if (options.Kind != 3 && options.Kind != 1)
 		{
 			// 纯色玻璃也带一点自上而下的透光（顶部略亮、底部回到本色），
@@ -39,7 +39,7 @@ public static class GlassMaterials
 				return new SolidColorBrush(color);
 			}
 			Color topColor = color;
-			int lift = light ? 6 : 10;
+			int lift = light ? 4 : 8;
 			topColor.R = (byte)Math.Min(255, topColor.R + lift);
 			topColor.G = (byte)Math.Min(255, topColor.G + lift);
 			topColor.B = (byte)Math.Min(255, topColor.B + lift);
