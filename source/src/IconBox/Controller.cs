@@ -189,7 +189,7 @@ public class Controller
 		glassSuppressed = Prefs.GameMode || (Prefs.AutoGameMode && FullscreenState.Active());
 		Tray = new NotifyIcon
 		{
-			Text = "IconBox v1.0.43 · 玻璃启动台",
+			Text = "IconBox v1.0.44 · 玻璃启动台",
 			Icon = (Icon.ExtractAssociatedIcon(Assembly.GetExecutingAssembly().Location) ?? SystemIcons.Application),
 			Visible = true
 		};
@@ -1871,7 +1871,7 @@ public class Controller
 			bool settingsLight = Prefs.Light;
 			Window w = new Window
 			{
-				Title = "IconBox · 个性化与控制 v1.0.43",
+				Title = "IconBox · 个性化与控制 v1.0.44",
 				Width = Math.Min(940.0, SystemParameters.WorkArea.Width - 40.0),
 				Height = Math.Min(790.0, SystemParameters.WorkArea.Height - 50.0),
 				MinWidth = 560.0,
@@ -2033,18 +2033,60 @@ public class Controller
 			// 现在合并成一页：整体外观 → 大面板 → Dock 栏，三段用轻量小标题分隔。
 			StackPanel stackPanel2 = func("外观与布局", "image");
 			StackPanel stackPanel3 = stackPanel2;
-			// 合并页里的分组小标题：只做视觉分段，不加边框和背景。
-			Action<string> section = delegate(string title)
+			// 合并页里的分组：标题行点击可折叠，内容和标题都挂在页面上。
+			StackPanel bodyPanel = stackPanel2;
+			List<StackPanel> groupBodies = new List<StackPanel>();
+			List<TextBlock> groupChevrons = new List<TextBlock>();
+			Func<string, StackPanel> group = delegate(string title)
 			{
-				stackPanel2.Children.Add(new TextBlock
+				StackPanel content = new StackPanel();
+				TextBlock chevron = new TextBlock
+				{
+					Text = "▾",
+					FontSize = 12.0,
+					Margin = new Thickness(9.0, 2.0, 0.0, 0.0),
+					Foreground = Tokens.LabelTertiary(settingsLight)
+				};
+				StackPanel head = new StackPanel
+				{
+					Orientation = System.Windows.Controls.Orientation.Horizontal
+				};
+				head.Children.Add(new TextBlock
 				{
 					Text = title,
 					FontFamily = Tokens.Type.Display,
 					FontSize = 15.0,
 					FontWeight = FontWeights.SemiBold,
-					Foreground = Tokens.Label(settingsLight),
-					Margin = new Thickness(0.0, 18.0, 0.0, 10.0)
+					Foreground = Tokens.Label(settingsLight)
 				});
+				head.Children.Add(chevron);
+				Border header = new Border
+				{
+					Child = head,
+					Background = System.Windows.Media.Brushes.Transparent,
+					Padding = new Thickness(0.0, 18.0, 0.0, 10.0),
+					Cursor = System.Windows.Input.Cursors.Hand
+				};
+				header.MouseLeftButtonUp += delegate
+				{
+					bool expand = content.Visibility != Visibility.Visible;
+					content.Visibility = (expand ? Visibility.Visible : Visibility.Collapsed);
+					chevron.Text = (expand ? "▾" : "▸");
+				};
+				bodyPanel.Children.Add(header);
+				bodyPanel.Children.Add(content);
+				groupBodies.Add(content);
+				groupChevrons.Add(chevron);
+				return content;
+			};
+			Action<StackPanel, bool> setGroup = delegate(StackPanel content, bool expanded)
+			{
+				content.Visibility = (expanded ? Visibility.Visible : Visibility.Collapsed);
+				int index = groupBodies.IndexOf(content);
+				if (index >= 0)
+				{
+					groupChevrons[index].Text = (expanded ? "▾" : "▸");
+				}
 			};
 			// 大面板实时预览：材质 / 色调 / 透明度 / 光泽任一项变化后立即重绘。
 			// 设置打开时大面板是收起的，看不到效果，所以这里给一块与面板同源材质的预览。
@@ -2401,8 +2443,12 @@ public class Controller
 				refreshPreview();
 				Board.Render();
 			};
+			// 统一开关决定默认展开哪一组：开启统一 → 收起面板与 Dock 的独立设置；
+			// 关闭统一 → 收起「统一参数」。标题行依然可以手动点开。
+			Action syncGroups = null;
 			GlobalStyleOptions g = Prefs.GlobalStyle;
-			section("整体外观");
+			StackPanel globalGroup = group("整体外观");
+			stackPanel2 = globalGroup;
 			func3(stackPanel2, "统一 Dock / 大面板外观（开启后下方全局样式同时作用于两处）", g.Unify, (bool unify) =>
 			{
 				g.Unify = unify;
@@ -2415,6 +2461,7 @@ public class Controller
 					g.Radius = Prefs.Dock.Radius;
 				}
 				liveGlobal();
+				syncGroups?.Invoke();
 			});
 			func4(stackPanel2, "材质风格", new string[4] { "标准毛玻璃", "轻盈渐变", "纯净实色", "明亮渐变" }, g.Material.Kind, (int kind) =>
 			{
@@ -2445,6 +2492,8 @@ public class Controller
 				g.Material.Normalize();
 				liveGlobal();
 			});
+			StackPanel unifyGroup = group("统一参数");
+			stackPanel2 = unifyGroup;
 			func2(stackPanel2, "统一透明度", 10.0, 100.0, g.OpacityPercent, 5.0, "%", (double opacity) =>
 			{
 				g.OpacityPercent = opacity;
@@ -2465,13 +2514,15 @@ public class Controller
 				g.Radius = radius;
 				liveGlobal();
 			});
+			stackPanel2 = globalGroup;
 			func3(stackPanel2, "使用浅色玻璃", Prefs.Light, (bool light) =>
 			{
 				Prefs.Light = light;
 				FeatureUi.Light = light;
 				live();
 			});
-			section("大面板");
+			StackPanel panelGroup = group("大面板");
+			stackPanel2 = panelGroup;
 			func4(stackPanel2, "大面板尺寸", new string[3] { "舒适 · 中号", "宽阔 · 大号", "铺满 · 全屏" }, Prefs.PanelSize, (int panelSize) =>
 			{
 				Prefs.PanelSize = panelSize;
@@ -2584,7 +2635,8 @@ public class Controller
 				Foreground = Tokens.LabelSecondary(settingsLight),
 				Margin = new Thickness(0.0, 12.0, 0.0, 0.0)
 			});
-			section("Dock 栏");
+			StackPanel dockGroup = group("Dock 栏");
+			stackPanel3 = dockGroup;
 			System.Windows.Controls.ComboBox presets = func4(stackPanel3, "一键风格", new string[4] { "自定义", "紧凑", "均衡", "宽松" }, 0, (int num3) =>
 			{
 			});
@@ -2723,6 +2775,14 @@ public class Controller
 				Foreground = Tokens.LabelSecondary(settingsLight),
 				Margin = new Thickness(0.0, 12.0, 0.0, 0.0)
 			});
+			syncGroups = delegate
+			{
+				setGroup(globalGroup, true);
+				setGroup(unifyGroup, g.Unify);
+				setGroup(panelGroup, !g.Unify);
+				setGroup(dockGroup, !g.Unify);
+			};
+			syncGroups();
 			presets.SelectionChanged += (object s, SelectionChangedEventArgs e) =>
 			{
 				if (presets.SelectedIndex >= 1)
