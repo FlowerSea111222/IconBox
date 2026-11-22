@@ -1,11 +1,11 @@
 {
-  "version": "1.0.46",
+  "version": "1.0.47",
   "released": "2026-11-22",
-  "notes": "搜索框不再是一块死白：输入框改为透明（模板跟随 Background，其它输入框仍是白底），只保留极淡的一层反光；搜索结果下拉改成和面板同一套玻璃材质（92% 的玻璃底 + 镜面细边 + 柔和投影），色调跟随全局玻璃，文字仍保持清晰可读。",
-  "installer": "IconBox-Setup-1.0.46.exe",
-  "portable": "IconBox_v1.0.46_User.zip",
+  "notes": "设置界面收紧凑：窗口默认尺寸 940×790 → 880×740；「快捷键与开关」页简化——去掉与卡片标题重复的大标题、说明压成一句、每行改成单行（名称 / 修饰键 / 按键 / 录制 / 开关），正常状态不再占一行提示，只有「未注册 / 被占用 / 已关闭」时才显示；两个下拉改成固定宽度，「Ctrl + Alt」不再被截断。",
+  "installer": "IconBox-Setup-1.0.47.exe",
+  "portable": "IconBox_v1.0.47_User.zip",
   "sha256": {
-    "installer": "EF44D7835E897B78F77481A4A3D0E9AF403F9268D3E0B124F1F3A687335D80A2",
-    "portable": "F2495409409C20C9A6AC7A402A5AD003F8200804867DBC75D7F1899E25FB6F37"
+    "installer": "B48AAB54C9F803A934306706DAD72FC26F538ABAF793EC9E40677A7620E24EB3",
+    "portable": "C83F8F13CED6BF91061D17CEF6168EB8822628752C3529B8FE8DF04F0CB42D40"
   }
 }
