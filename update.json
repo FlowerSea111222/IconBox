@@ -1,11 +1,11 @@
 {
-  "version": "1.0.44",
+  "version": "1.0.45",
   "released": "2026-11-22",
-  "notes": "「外观与布局」页的分组改成可折叠，并按「统一 Dock / 大面板外观」开关自动收起：开启统一时，大面板与 Dock 栏两组默认折叠（只看统一参数）；关闭统一时，统一参数折叠，大面板与 Dock 栏各自展开。折叠的标题带箭头，点一下就展开，随时可以手动翻看被收起的设置。",
-  "installer": "IconBox-Setup-1.0.44.exe",
-  "portable": "IconBox_v1.0.44_User.zip",
+  "notes": "玻璃材质调得更清透：填充层再透一档、强调色掺入量从 16% 降到 10%，顶部那道白色光泽改成贴着上沿的窄带（不再整块泛白），边缘高光压薄成一条细硬的玻璃口，模糊下限从 18 提到 26 让背后的内容化成柔和的色块而不是清晰文字。Dock、大面板、控制中心、设置窗共用同一套材质，观感一致。",
+  "installer": "IconBox-Setup-1.0.45.exe",
+  "portable": "IconBox_v1.0.45_User.zip",
   "sha256": {
-    "installer": "53AE118066072420159EEDF4084FEE8A30C503B0628776D5B065EB6A58DD68F1",
-    "portable": "692CE50E518223BEFC69CC40E2DBB5838246770BDDB64F2823A0BCA1B5EF1913"
+    "installer": "C36DBB22B054A46EBC7F3EEEBF02FB5988597CCE463994743167937C381CF048",
+    "portable": "11AF7BCAD3B8B27A4FB1FF6D6F15732D490074E96E5BCCEB0BFEA6300E0A855B"
   }
 }
